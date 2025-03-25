@@ -10,10 +10,10 @@ x_test = x_test / 255.0
 
 # 3. Modell definiálása (szekvenciális)
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=(28, 28)),  # lapítjuk a 2D képet
-    tf.keras.layers.Dense(128, activation='relu'),  # rejtett réteg
-    tf.keras.layers.Dropout(0.2),                   # dropout (overfitting ellen)
-    tf.keras.layers.Dense(10, activation='softmax') # kimenet: 10 osztály
+    tf.keras.layers.Flatten(input_shape=(28, 28)),  # 2d kép lapítása 1d vektorrá
+    tf.keras.layers.Dense(128, activation='relu'),  # rejtett réteg, 128 neuron relu aktivációval
+    tf.keras.layers.Dropout(0.15),                   # dropout (overfitting ellen)
+    tf.keras.layers.Dense(10, activation='softmax') # kimenet: 10 osztály, 10 számjegy
 ])
 
 # 4. Modell fordítása
@@ -22,7 +22,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 # 5. Modell tanítása
-history = model.fit(x_train, y_train, epochs=5, validation_data=(x_test, y_test))
+history = model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
 
 # 6. Metrikák ábrázolása
 plt.figure(figsize=(10, 4))
