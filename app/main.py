@@ -27,14 +27,14 @@ history = model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test
 # 6. Metrikák ábrázolása
 plt.figure(figsize=(10, 4))
 
-# Loss
+# Veszteség
 plt.subplot(1, 2, 1)
 plt.plot(history.history['loss'], label='Train loss')
 plt.plot(history.history['val_loss'], label='Val loss')
 plt.title('Loss over epochs')
 plt.legend()
 
-# Accuracy
+# Pontosság
 plt.subplot(1, 2, 2)
 plt.plot(history.history['accuracy'], label='Train acc')
 plt.plot(history.history['val_accuracy'], label='Val acc')
