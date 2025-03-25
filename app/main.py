@@ -1,13 +1,46 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-# Download and load in the MNIST database
+# 1. Betöltjük az MNIST adatbázist
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-#Show one element from the dataset
-plt.imshow(x_train[0], cmap="gray")
-plt.title(f"Label: {y_train[0]}")
+# 2. Normalizáljuk az adatokat
+x_train = x_train / 255.0
+x_test = x_test / 255.0
 
-# Save the plot to a file in the app directory
-plt.savefig("output.png")
+# 3. Modell definiálása (szekvenciális)
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Flatten(input_shape=(28, 28)),  # lapítjuk a 2D képet
+    tf.keras.layers.Dense(128, activation='relu'),  # rejtett réteg
+    tf.keras.layers.Dropout(0.2),                   # dropout (overfitting ellen)
+    tf.keras.layers.Dense(10, activation='softmax') # kimenet: 10 osztály
+])
 
+# 4. Modell fordítása
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+# 5. Modell tanítása
+history = model.fit(x_train, y_train, epochs=5, validation_data=(x_test, y_test))
+
+# 6. Metrikák ábrázolása
+plt.figure(figsize=(10, 4))
+
+# Loss
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='Train loss')
+plt.plot(history.history['val_loss'], label='Val loss')
+plt.title('Loss over epochs')
+plt.legend()
+
+# Accuracy
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'], label='Train acc')
+plt.plot(history.history['val_accuracy'], label='Val acc')
+plt.title('Accuracy over epochs')
+plt.legend()
+
+# 7. Ábra mentése
+plt.tight_layout()
+plt.savefig("app/output.png")
