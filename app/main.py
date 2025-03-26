@@ -44,3 +44,5 @@ plt.legend()
 # 7. Ábra mentése
 plt.tight_layout()
 plt.savefig("app/output.png")
+model.save("model.h5")
+
