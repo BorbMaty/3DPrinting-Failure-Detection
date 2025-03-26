@@ -30,3 +30,13 @@ jobs:
         with:
           name: training-results
           path: app/output.png
+
+      - name: Save training artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: |
+            models/model.h5
+            app/output.png
+        
+        

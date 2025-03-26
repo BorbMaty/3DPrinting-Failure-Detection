@@ -44,5 +44,13 @@ plt.legend()
 # 7. Ábra mentése
 plt.tight_layout()
 plt.savefig("app/output.png")
+
+import os
+
+# Ha nem létezik a models mappa, hozzuk létre
+os.makedirs("models", exist_ok=True)
+
+# Ezután lehet menteni a modellt
 model.save("models/model.h5")
+
 
