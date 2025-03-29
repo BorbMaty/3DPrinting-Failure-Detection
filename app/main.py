@@ -1,5 +1,7 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import os
+from datetime import datetime
 
 # 1. Betöltjük az MNIST adatbázist
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -10,10 +12,10 @@ x_test = x_test / 255.0
 
 # 3. Modell definiálása (szekvenciális)
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=(28, 28)),  # 2d kép lapítása 1d vektorrá
-    tf.keras.layers.Dense(128, activation='relu'),  # rejtett réteg, 128 neuron relu aktivációval
-    tf.keras.layers.Dropout(0.15),                   # dropout (overfitting ellen)
-    tf.keras.layers.Dense(10, activation='softmax') # kimenet: 10 osztály, 10 számjegy
+    tf.keras.layers.Flatten(input_shape=(28, 28)),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dropout(0.15),
+    tf.keras.layers.Dense(10, activation='softmax')
 ])
 
 # 4. Modell fordítása
@@ -24,7 +26,14 @@ model.compile(optimizer='adam',
 # 5. Modell tanítása
 history = model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
 
-# 6. Metrikák ábrázolása
+# 6. Timestamp generálása
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+# 7. Mappák létrehozása
+os.makedirs("models", exist_ok=True)
+os.makedirs("graphs", exist_ok=True)
+
+# 8. Metrikák ábrázolása és mentése
 plt.figure(figsize=(10, 4))
 
 # Veszteség
@@ -41,27 +50,8 @@ plt.plot(history.history['val_accuracy'], label='Val acc')
 plt.title('Accuracy over epochs')
 plt.legend()
 
-# 7. Ábra mentése
 plt.tight_layout()
-plt.savefig("app/output.png")
+plt.savefig(f"graphs/metrics_{timestamp}.png")  # csak ide mentjük
 
-import os
-
-import os
-from datetime import datetime
-
-# 7. Ábra mentése
-plt.tight_layout()
-plt.savefig("app/output.png")
-
-# 8. Modellek mappájának létrehozása
-os.makedirs("models", exist_ok=True)
-
-# 9. Timestamp generálása a fájlnévhez
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-model_filename = f"model_{timestamp}.keras"
-
-# 10. Modell mentése timestamp-es névvel
-model.save(f"models/{model_filename}")
-
-
+# 9. Modell mentése timestamp-es névvel
+model.save(f"models/model_{timestamp}.keras")
