@@ -3,25 +3,25 @@ import matplotlib.pyplot as plt
 import os
 from datetime import datetime
 
-# 1. Betöltjük az MNIST adatbázist
+# 1. Betöltöm az MNIST adatbázist
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
 # 2. Normalizáljuk az adatokat
 x_train = x_train / 255.0
 x_test = x_test / 255.0
 
-# 3. Modell definiálása (szekvenciális)
+# 3. Modell definiálása
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=(28, 28)),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dropout(0.15),
-    tf.keras.layers.Dense(10, activation='softmax')
+    tf.keras.layers.Flatten(input_shape=(28, 28)), # Bemeneti réteg 28x28-as képek 1D tömbbé alakítása
+    tf.keras.layers.Dense(128, activation='relu'), # ReLU aktivációs függvény + 128 neuron a rejtett rétegben
+    tf.keras.layers.Dropout(0.15), #Random megölöm a neuronok 15%-át, megelőzve az overfittinget
+    tf.keras.layers.Dense(10, activation='softmax') # Kimeneti réteg 10 neuron, softmax aktivációs függvény
 ])
 
 # 4. Modell fordítása
-model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+model.compile(optimizer='adam', # Adam optimalizáló
+              loss='sparse_categorical_crossentropy', # Kereszthiba veszteség függvény
+              metrics=['accuracy']) # Pontosság mint metrika
 
 # 5. Modell tanítása
 history = model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
@@ -30,11 +30,11 @@ history = model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 # 7. Mappák létrehozása
-os.makedirs("models", exist_ok=True)
-os.makedirs("graphs", exist_ok=True)
+os.makedirs("models", exist_ok=True) # itt lesznek a mentett modellek
+os.makedirs("graphs", exist_ok=True) # itt lesznek a mentett grafikonok
 
 # 8. Metrikák ábrázolása és mentése
-plt.figure(figsize=(10, 4))
+plt.figure(figsize=(10, 4)) # Grafikon méretezése
 
 # Veszteség
 plt.subplot(1, 2, 1)
