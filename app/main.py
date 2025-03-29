@@ -47,10 +47,21 @@ plt.savefig("app/output.png")
 
 import os
 
-# Ha nem létezik a models mappa, hozzuk létre
+import os
+from datetime import datetime
+
+# 7. Ábra mentése
+plt.tight_layout()
+plt.savefig("app/output.png")
+
+# 8. Modellek mappájának létrehozása
 os.makedirs("models", exist_ok=True)
 
-# Ezután lehet menteni a modellt
-model.save("models/model.h5")
+# 9. Timestamp generálása a fájlnévhez
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+model_filename = f"model_{timestamp}.keras"
+
+# 10. Modell mentése timestamp-es névvel
+model.save(f"models/{model_filename}")
 
 
