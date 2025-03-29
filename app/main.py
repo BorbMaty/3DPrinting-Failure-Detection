@@ -27,7 +27,7 @@ model.compile(optimizer='adam',
 history = model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
 
 # 6. Timestamp generálása
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 # 7. Mappák létrehozása
 os.makedirs("models", exist_ok=True)
@@ -51,7 +51,7 @@ plt.title('Accuracy over epochs')
 plt.legend()
 
 plt.tight_layout()
-plt.savefig(f"graphs/metrics_{timestamp}.png")  # csak ide mentjük
+plt.savefig(f"graphs/metrics_{timestamp}.png")
 
 # 9. Modell mentése timestamp-es névvel
 model.save(f"models/model_{timestamp}.keras")
