@@ -2,3 +2,5 @@ tensorflow
 numpy
 pandas
 matplotlib
+os
+datetime
