@@ -1,5 +1,7 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import os
+from datetime import datetime
 
 # 1. Betöltjük az MNIST adatbázist
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -45,20 +47,18 @@ plt.legend()
 plt.tight_layout()
 plt.savefig("app/output.png")
 
-import os
-
-import os
-from datetime import datetime
+#Timestamp generálása a fájlnévhez
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # 7. Ábra mentése
 plt.tight_layout()
-plt.savefig("app/output.png")
+plot_filename = f"graphs/metrics_{timestamp}.png"
+plt.savefig(plot_filename)
 
 # 8. Modellek mappájának létrehozása
 os.makedirs("models", exist_ok=True)
+os.makedirs("graphs", exist_ok=True)
 
-# 9. Timestamp generálása a fájlnévhez
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 model_filename = f"model_{timestamp}.keras"
 
 # 10. Modell mentése timestamp-es névvel
