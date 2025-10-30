@@ -3,7 +3,7 @@ import shutil
 from glob import glob
 
 # Paths
-root_dir = '/home/lucy/Desktop/Dolgaim/Egyetem/Államvizsga/BA_Dataset/YoloDataset'
+root_dir = '/home/lucy/Desktop/datasetmaybefinal'
 output_images = os.path.join(root_dir, 'merged/images/train')
 output_labels = os.path.join(root_dir, 'merged/labels/train')
 
@@ -13,8 +13,8 @@ os.makedirs(output_labels, exist_ok=True)
 total_images = 0
 total_labels = 0
 
-for i in range(1, 9):
-    dataset_path = os.path.join(root_dir, f'yolo{i}')
+for i in range(1, 14):
+    dataset_path = os.path.join(root_dir, f'final{i}')
     image_dir = os.path.join(dataset_path, 'images')
     label_dir = os.path.join(dataset_path, 'labels')
 

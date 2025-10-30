@@ -4,3 +4,9 @@ pandas
 matplotlib
 datetime
 ultralytics
+albumentations
+opencv-python
+scikit-image
+scipy
+tqdm
+Pillow
