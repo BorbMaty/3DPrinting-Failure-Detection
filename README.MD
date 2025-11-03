@@ -110,12 +110,7 @@ python3 tester.py --weights runs/train_*/weights/best.pt --source dataset/testPh
 
 ## 📊 Model Performance
 
-| Metric | Value (YOLOv8m/l) |
-|--------|-------------------|
-| mAP@0.5 | 0.95–0.96 |
-| Precision | 0.94 |
-| Recall | 0.92 |
-| Inference Speed | ~70ms / image on RTX 3060 Laptop GPU |
+--TODO
 
 All metrics are exported to `metrics.json` for reproducibility.  
 Visual results (bounding boxes, confusion matrix) are stored in the `runs/detect/` directory.
