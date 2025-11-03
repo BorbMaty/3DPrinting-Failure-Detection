@@ -132,7 +132,7 @@ Visual results (bounding boxes, confusion matrix) are stored in the `runs/detect
 - Stratified split into `train`, `val`, and `test` sets  
 
 ### 4️⃣ Model Training
-- Conducted on local GPU (RTX 3060) and Google Colab (T4)  
+- Conducted on local GPU (RTX 3060) and Google Colab (T4) Also on the University Computer NVDIA A500 
 - Trained YOLOv8m and YOLOv8l variants  
 - Early stopping and learning rate scheduling applied  
 
