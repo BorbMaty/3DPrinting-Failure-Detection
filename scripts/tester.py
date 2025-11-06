@@ -2,7 +2,7 @@ from ultralytics import YOLO
 from pathlib import Path
 
 # --- 1️⃣ Modell betöltése ---
-model = YOLO('/home/lucy/Desktop/runs/ba_yolov8l_first/weights/best.pt')  # saját YOLOv8 modell
+model = YOLO('/home/lucy/Desktop/yolov8x_finetune_highmap/weights/best.pt')  # saját YOLOv8 modell
 
 # --- 2️⃣ Tesztképek mappa ---
 test_folder = '/home/lucy/Desktop/datasetmaybefinal/testPhotos'
