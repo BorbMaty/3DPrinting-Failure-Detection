@@ -68,9 +68,6 @@ Inside container:
 
     printerfail-video --weights ... --source video.avi --out output.mp4
 
-## 📚 Jupyter
-
-    docker compose run --rm --profile jupyter -p 8888:8888 jupyter
 
 ## 💾 Persistence
 
