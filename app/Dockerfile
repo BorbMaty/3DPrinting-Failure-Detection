@@ -1,16 +1,14 @@
-# Base python image
-FROM python:3.11-slim
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
 
-# Create the working directory in the container
-WORKDIR /app
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ffmpeg libgl1 libglib2.0-0 git curl ca-certificates tini && \
+    rm -rf /var/lib/apt/lists/*
 
-# install the dependencies
-COPY requirements.txt .
-RUN apt-get update && apt-get upgrade -y && apt-get clean && \
-	pip install --no-cache-dir -r requirements.txt
+WORKDIR /workspace
 
-# Copy the application
-COPY . .
+COPY requirements.txt /workspace/requirements.txt
+RUN pip install -U pip && pip install -r requirements.txt || true && \
+    pip install ultralytics opencv-python-headless pandas scipy 
 
-# run main.py
-CMD ["python", "teacher.py"]
+ENTRYPOINT ["/usr/bin/tini","--"]
+CMD ["/bin/bash"]

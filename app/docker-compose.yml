@@ -1,0 +1,30 @@
+x-common: &common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  working_dir: /workspace
+  volumes:
+    - ./src:/workspace/src
+    - ./runs:/workspace/runs
+    - ./pyproject.toml:/workspace/pyproject.toml
+    - ./requirements.txt:/workspace/requirements.txt
+    - type: bind
+      source: "C:\\Users\\borbathm\\Desktop\\Dataset"
+      target: /workspace/dataset
+  environment:
+    - PYTHONUNBUFFERED=1
+  gpus: all
+
+services:
+  yolo:
+    <<: *common
+    tty: true
+    command: >
+      bash -lc "pip install -e . && bash"
+
+  train:
+    <<: *common
+    command: >
+      bash -lc "pip install -e . && printerfail-train --override train.epochs=1"
+    profiles: ["train"]
+
