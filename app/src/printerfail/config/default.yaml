@@ -1,0 +1,29 @@
+# TRÉNING
+train:
+  data_yaml: "${DATASET_DIR}/data.yaml"   # env-ből jön a DATASET_DIR (docker compose set-eli)
+  model: "yolov8l.pt"
+  imgsz: 896
+  epochs: 120
+  batch: 16
+  workers: 4
+  project: "${RUNS_DIR}/ba_yolov8l_first"
+  seed: 42
+
+# PREDIKCIÓ
+predict:
+  weights: "${RUNS_DIR}/ba_yolov8l_first/weights/best.pt"
+  conf: 0.25
+  iou: 0.45
+  imgsz: 896
+  save_txt: true
+  save_conf: true
+
+# VIDEÓ
+video:
+  source: "${DATASET_DIR}/testvideo.avi"
+  out_path: "${RUNS_DIR}/video_out.avi"
+
+# PATH ALAPÉRTELMEK (env felülírhatja)
+paths:
+  dataset_dir: "./dataset"
+  runs_dir: "./runs"

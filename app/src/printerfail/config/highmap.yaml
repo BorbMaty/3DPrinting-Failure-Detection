@@ -1,0 +1,27 @@
+train:
+  # alapok
+  data_yaml: "${DATASET_DIR}/data.yaml"   # vagy: "/workspace/dataset/merged_aug_final_split/data.yaml"
+  model: "yolov8x.pt"
+  imgsz: 896
+  epochs: 120
+  batch: 6
+  device: 0
+
+  # projektnév/útvonal
+  project: "${RUNS_DIR}/runs"
+  name: "yolov8x_finetune_highmap_restart"
+
+  # early stopping
+  patience: 50
+
+  # LR ütemezés
+  lr0: 0.001
+  lrf: 0.05
+
+  # augmentációk
+  mosaic: 0.5
+  mixup: 0.1
+  degrees: 5
+  scale: 0.1
+  translate: 0.05
+  fliplr: 0.5
