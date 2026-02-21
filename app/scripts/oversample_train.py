@@ -1,90 +1,131 @@
 #!/usr/bin/env python3
-import os, glob, argparse, shutil
-from collections import Counter, defaultdict
+import os
+import glob
+import argparse
 import random
+from collections import Counter, defaultdict
+from shutil import copy2
 
-p = argparse.ArgumentParser()
-p.add_argument("--train_images", required=True)
-p.add_argument("--train_labels", required=True)
-p.add_argument("--target_perc_of_max", type=float, default=0.6,
-              help="A ritka osztály cél szintje a leggyakoriból (pl. 0.6 = 60%)")
-p.add_argument("--seed", type=int, default=42)
-args = p.parse_args()
-random.seed(args.seed)
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--train_images", required=True, help="train/images mappa")
+    p.add_argument("--train_labels", required=True, help="train/labels mappa")
+    p.add_argument("--target_per_class", type=int, default=500,
+                   help="minimum cél instance/class (csak aki ez alatt van, azt húzzuk fel)")
+    p.add_argument("--seed", type=int, default=42)
+    args = p.parse_args()
 
-label_paths = glob.glob(os.path.join(args.train_labels, "*.txt"))
-cls_counts = Counter()
-img_classes = {}
+    random.seed(args.seed)
 
-for lp in label_paths:
-    base = os.path.splitext(os.path.basename(lp))[0]
-    s = set()
-    with open(lp) as f:
-        for ln in f:
-            parts = ln.strip().split()
-            if len(parts) < 5: continue
-            c = int(float(parts[0])); s.add(c); cls_counts[c] += 1
-    if s: img_classes[base] = s
+    # --- 1) Beolvasás: melyik képben milyen classok vannak, és class count ---
+    label_files = glob.glob(os.path.join(args.train_labels, "*.txt"))
+    img2classes = {}
+    class_counts = Counter()
+    class2images = defaultdict(list)
 
-if not cls_counts:
-    print("No labels found."); exit(0)
+    def find_image(base):
+        for ext in [".jpg",".jpeg",".png",".bmp",".tif",".tiff",".JPG",".PNG"]:
+            p = os.path.join(args.train_images, base + ext)
+            if os.path.exists(p):
+                return p
+        return None
 
-max_cls = max(cls_counts.values())
-target = int(max_cls * args.target_perc_of_max)
+    for lbl in label_files:
+        base = os.path.splitext(os.path.basename(lbl))[0]
+        classes_here = set()
+        with open(lbl, "r") as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) < 5:
+                    continue
+                try:
+                    c = int(float(parts[0]))
+                except ValueError:
+                    continue
+                classes_here.add(c)
 
-print("\n📊 Train label counts:")
-for c in sorted(cls_counts):
-    print(f"Class {c}: {cls_counts[c]}")
-print(f"\n🎯 Target per class: ≥ {target} labels")
-
-# képek listája osztályonként
-cls2images = defaultdict(list)
-for base, s in img_classes.items():
-    for c in s:
-        cls2images[c].append(base)
-
-dups = 0
-for c in sorted(cls_counts):
-    need = max(0, target - cls_counts[c])
-    if need == 0:
-        continue
-    candidates = cls2images[c][:]
-    if not candidates:
-        continue
-    print(f"Class {c}: need +{need} labels via duplication")
-    i = 0
-    while need > 0:
-        base = random.choice(candidates)
-        img_src = None
-        for ext in [".jpg",".jpeg",".png",".JPG",".PNG",".bmp",".tif",".tiff"]:
-            pth = os.path.join(args.train_images, base + ext)
-            if os.path.exists(pth):
-                img_src = pth; img_ext = ext; break
-        if not img_src:
-            # nincs kép ehhez a labelhez
+        if not classes_here:
             continue
-        lbl_src = os.path.join(args.train_labels, base + ".txt")
 
-        dup_name = f"{base}__dup{dups}"
-        img_dst = os.path.join(args.train_images, dup_name + img_ext)
-        lbl_dst = os.path.join(args.train_labels, dup_name + ".txt")
+        img_path = find_image(base)
+        if not img_path:
+            continue
 
-        shutil.copy2(img_src, img_dst)
-        shutil.copy2(lbl_src, lbl_dst)
+        img2classes[base] = classes_here
+        for c in classes_here:
+            class_counts[c] += 1
+            class2images[c].append(base)
 
-        dups += 1
-        # növeljük a számlálót annyival, ahány c osztály szerepel a fájlban
-        added = 0
-        with open(lbl_src) as f:
-            for ln in f:
-                parts = ln.strip().split()
-                if len(parts) < 5: continue
-                if int(float(parts[0])) == c:
-                    added += 1
-        cls_counts[c] += added
-        need = max(0, target - cls_counts[c])
+    print("📊 Jelenlegi class count (train):", dict(sorted(class_counts.items())))
+    print("🎯 Cél minimum instance/class:", args.target_per_class)
 
-print(f"\n✅ Oversampling kész. Duplikált fájlok: {dups}")
-print("Új train label counts:")
-for c in sorted(cls_counts):
-    print(f"Class {c}: {cls_counts[c]}")
+    # --- 2) Döntés: kit kell oversample-elni? ---
+    targets = {}
+    for c, cnt in class_counts.items():
+        if cnt >= args.target_per_class:
+            targets[c] = cnt      # ehhez NEM nyúlunk, marad
+        else:
+            targets[c] = args.target_per_class  # ezt felhúzzuk eddig
+
+    print("🎯 Target instance/class:", targets)
+
+    # --- 3) Oversample ciklus ---
+    # új fájlneveknél suffix: _ov1, _ov2, ...
+    duplicate_index = 1
+
+    # Hogy ne lépjük túl brutálisan, adunk egy egyszerű limitet:
+    max_copies_per_image = 10  # safeguard
+    used_copies = Counter()     # hányszor duplikáltunk már egy base-t
+
+    # addig megyünk classonként, míg el nem érjük a targetet
+    # több fordulóban, hogy minden class esélyt kapjon
+    progress = True
+    while progress:
+        progress = False
+        for c in sorted(targets.keys()):
+            current = class_counts[c]
+            target = targets[c]
+            if current >= target:
+                continue  # kész
+
+            candidates = class2images[c]
+            if not candidates:
+                continue
+
+            # véletlenül választunk egy képet, ami tartalmazza ezt az osztályt
+            base = random.choice(candidates)
+            if used_copies[base] >= max_copies_per_image:
+                # ezt már elégszer másoltuk
+                continue
+
+            img_path = find_image(base)
+            lbl_path = os.path.join(args.train_labels, base + ".txt")
+            if not img_path or not os.path.exists(lbl_path):
+                continue
+
+            # új név
+            stem, ext = os.path.splitext(os.path.basename(img_path))
+            new_stem = f"{stem}_ov{duplicate_index}"
+            new_img = os.path.join(args.train_images, new_stem + ext)
+            new_lbl = os.path.join(args.train_labels, new_stem + ".txt")
+
+            copy2(img_path, new_img)
+            copy2(lbl_path, new_lbl)
+
+            # frissítjük a számlálókat
+            duplicate_index += 1
+            used_copies[base] += 1
+
+            # ugyanazok a classok lesznek az új képen, mint az eredetin
+            for cc in img2classes[base]:
+                class_counts[cc] += 1
+                class2images[cc].append(new_stem)
+            img2classes[new_stem] = set(img2classes[base])
+
+            progress = True  # történt valami ebben a körben
+
+    print("\n✅ Oversample kész.")
+    print("📊 Új class count (train):", dict(sorted(class_counts.items())))
+
+if __name__ == "__main__":
+    main()
