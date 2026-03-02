@@ -20,6 +20,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+*.pt
 
 # GCP credentials / service account keys
 *.json
