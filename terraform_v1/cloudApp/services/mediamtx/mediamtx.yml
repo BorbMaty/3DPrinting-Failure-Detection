@@ -1,0 +1,17 @@
+logLevel: info
+
+rtsp: yes
+webrtc: yes
+webrtcAddress: :8889
+
+hls: yes
+hlsAddress: :8888
+hlsAllowOrigin: '*'
+
+api: yes
+apiAddress: :9997
+
+paths:
+  cam1: {}
+  cam2: {}
+  cam3: {}
