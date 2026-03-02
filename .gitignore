@@ -54,4 +54,5 @@ Thumbs.db
 .idea/
 *.swp*.log
 firebase-debug.log
+*.zip*.log
 *.zip
