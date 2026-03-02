@@ -52,4 +52,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-*.swp
+*.swp*.log
+firebase-debug.log
+*.zip
