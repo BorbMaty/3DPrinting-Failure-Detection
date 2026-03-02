@@ -1,9 +1,0 @@
-logLevel: info
-
-rtsp: yes
-webrtc: yes
-
-paths:
-  cam1: {}
-  cam2: {}
-  cam3: {}
