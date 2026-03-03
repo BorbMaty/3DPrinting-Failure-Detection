@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3-Cam WebRTC Dashboard</title>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, query, orderBy, limit }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ── Firebase config ──────────────────────────────────────────────────────
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCjp-IZzt2CfXEwBxnn2icv8LxvrsJmieQ",
+      authDomain:        "printermonitor-488112.firebaseapp.com",
+      projectId:         "printermonitor-488112",
+      storageBucket:     "printermonitor-488112.firebasestorage.app",
+      messagingSenderId: "895714392909",
+      appId:             "1:895714392909:web:260cb1a2b15468bead1504",
+      measurementId:     "G-Z17EL9988Q",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // Expose to global scope so the non-module script can use it
+    window._firestoreReady = { db, collection, onSnapshot, query, orderBy, limit };
+    window.dispatchEvent(new Event("firestoreReady"));
+  </script>
+
+  <style>
+    :root{
+      --bg:#0b0d10;
+      --card:#12161c;
+      --text:#e8eef6;
+      --muted:#97a3b6;
+      --gap:12px;
+      --r:14px;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.alerting header{ border-bottom-color: rgba(231,76,60,.55); }
+    body.alerting main.grid{
+      outline: 4px solid rgba(231,76,60,.55);
+      outline-offset: -6px;
+      border-radius: 18px;
+    }
+    body.alerting .tile{ border-color: rgba(231,76,60,.30); }
+
+    header{
+      flex: 0 0 auto;
+      height: 56px;
+      box-sizing: border-box;
+      background: rgba(11,13,16,.85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 10px 16px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    header h1{ font-size:16px; margin:0; font-weight:650; letter-spacing:.2px; white-space:nowrap; }
+    header .pill{
+      font-size:12px; padding:6px 10px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px; color:var(--muted); white-space:nowrap;
+    }
+    header button{
+      margin-left:auto; padding:8px 12px; border-radius:10px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06); color:var(--text); cursor:pointer; white-space:nowrap;
+    }
+    header button:hover { background:rgba(255,255,255,.09); }
+
+    main.grid{
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 16px;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: var(--gap);
+      overflow: hidden;
+    }
+
+    @media (max-width:1100px){
+      body { overflow:auto; }
+      main.grid{ overflow:visible; grid-template-columns:1fr; grid-template-rows:auto; }
+    }
+
+    .tile{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:var(--r);
+      overflow:hidden;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      display:flex; flex-direction:column;
+      height:100%; min-height:0;
+    }
+    .tile .top{
+      flex:0 0 auto; padding:10px 12px;
+      display:flex; align-items:center; gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .dot{ width:10px; height:10px; border-radius:99px; background:#555; }
+    .dot.ok  { background:#2ecc71; }
+    .dot.bad { background:#e74c3c; }
+    .name   { font-size:13px; font-weight:650; }
+    .status { font-size:12px; color:var(--muted); margin-left:auto; }
+
+    .stage{ position:relative; flex:1 1 auto; min-height:0; width:100%; background:#000; }
+    video, canvas{ position:absolute; inset:0; width:100%; height:100%; }
+    canvas{ pointer-events:none; }
+
+    .dashBody{
+      flex:1 1 auto; min-height:0; padding:12px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .dashRow{ flex:0 0 auto; display:flex; gap:10px; align-items:center; }
+    .btn{
+      padding:8px 12px; border-radius:10px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06); color:var(--text); cursor:pointer;
+    }
+    .btn:hover { background:rgba(255,255,255,.09); }
+    .hint{ color:var(--muted); font-size:12px; }
+
+    #eventLog{
+      flex:1 1 auto; min-height:0; overflow:auto;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:12px; padding:10px;
+      background:rgba(0,0,0,.25);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+      font-size:12px; line-height:1.4;
+    }
+    .eventLine{
+      padding:6px 8px; border-radius:10px;
+      border:1px solid rgba(255,255,255,.06);
+      background:rgba(255,255,255,.03); margin-bottom:8px;
+    }
+    .eventLine .meta{ color:var(--muted); margin-bottom:2px; }
+    .eventLine .msg { color:var(--text); font-weight:650; }
+    .eventLine.alert{
+      border-color:rgba(231,76,60,.45);
+      background:rgba(231,76,60,.10);
+    }
+    .eventLine.alert .msg{ color:#ffb4b0; }
+
+    #fsStatus{
+      font-size:11px; padding:4px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      color:var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>3-Camera WebRTC Dashboard</h1>
+    <span class="pill" id="hostPill">host: cow-homeless-concluded-corn.trycloudflare.com</span>
+    <span class="pill" id="hintPill">WHEP → MediaMTX</span>
+    <span id="fsStatus">Firestore: connecting…</span>
+    <button id="reconnectBtn">Reconnect all</button>
+  </header>
+
+  <main class="grid">
+    <section class="tile" data-cam="cam1">
+      <div class="top">
+        <span class="dot" id="dot-cam1"></span>
+        <span class="name">cam1</span>
+        <span class="status" id="status-cam1">idle</span>
+      </div>
+      <div class="stage">
+        <video id="v-cam1" autoplay playsinline muted></video>
+        <canvas id="c-cam1"></canvas>
+      </div>
+    </section>
+
+    <section class="tile" data-cam="cam2">
+      <div class="top">
+        <span class="dot" id="dot-cam2"></span>
+        <span class="name">cam2</span>
+        <span class="status" id="status-cam2">idle</span>
+      </div>
+      <div class="stage">
+        <video id="v-cam2" autoplay playsinline muted></video>
+        <canvas id="c-cam2"></canvas>
+      </div>
+    </section>
+
+    <section class="tile" data-cam="cam3">
+      <div class="top">
+        <span class="dot" id="dot-cam3"></span>
+        <span class="name">cam3</span>
+        <span class="status" id="status-cam3">idle</span>
+      </div>
+      <div class="stage">
+        <video id="v-cam3" autoplay playsinline muted></video>
+        <canvas id="c-cam3"></canvas>
+      </div>
+    </section>
+
+    <section class="tile" id="dashTile">
+      <div class="top">
+        <span class="dot ok"></span>
+        <span class="name">dashboard</span>
+        <span class="status" id="dashStatus">events: 0</span>
+      </div>
+      <div class="dashBody">
+        <div class="dashRow">
+          <button class="btn" id="clearEventsBtn">Clear</button>
+          <span class="hint">Live from Firestore · alerts collection</span>
+        </div>
+        <div id="eventLog"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ── WebRTC config ────────────────────────────────────────────────────────
+    const HOST = "cow-homeless-concluded-corn.trycloudflare.com";
+    const cams = ["cam1","cam2","cam3"];
+    const pcs  = new Map();
+
+    // Track latest detections per camera for canvas overlay
+    const latestBoxes = { cam1: [], cam2: [], cam3: [] };
+
+    function setStatus(cam, ok, text) {
+      document.getElementById(`dot-${cam}`).classList.toggle("ok",  !!ok);
+      document.getElementById(`dot-${cam}`).classList.toggle("bad", ok === false);
+      document.getElementById(`status-${cam}`).textContent = text;
+    }
+
+    // ── WHEP ─────────────────────────────────────────────────────────────────
+    async function startWhep(cam) {
+      const videoEl = document.getElementById(`v-${cam}`);
+      const whepUrl = `https://${HOST}/${cam}/whep`;
+
+      if (pcs.has(cam)) { try { pcs.get(cam).close(); } catch {} pcs.delete(cam); }
+
+      setStatus(cam, null, "connecting...");
+      const pc = new RTCPeerConnection();
+      pcs.set(cam, pc);
+      pc.addTransceiver("video", { direction:"recvonly" });
+
+      pc.ontrack = (ev) => { videoEl.srcObject = ev.streams[0]; setStatus(cam, true, "online"); };
+      pc.onconnectionstatechange = () => {
+        const s = pc.connectionState;
+        if (s === "failed" || s === "disconnected") setStatus(cam, false, s);
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const res = await fetch(whepUrl, {
+        method:"POST",
+        headers:{"Content-Type":"application/sdp"},
+        body: offer.sdp
+      });
+
+      if (!res.ok) { setStatus(cam, false, `whep ${res.status}`); return; }
+
+      const answerSdp = await res.text();
+      await pc.setRemoteDescription({ type:"answer", sdp: answerSdp });
+      setStatus(cam, null, "negotiated");
+    }
+
+    async function startAll() {
+      for (const cam of cams) { try { await startWhep(cam); } catch(e) { console.error(e); } }
+    }
+
+    document.getElementById("reconnectBtn").addEventListener("click", startAll);
+
+    // ── Canvas overlay ────────────────────────────────────────────────────────
+    function drawBoxes(cam, boxes) {
+      const video  = document.getElementById(`v-${cam}`);
+      const canvas = document.getElementById(`c-${cam}`);
+      const ctx    = canvas.getContext("2d");
+
+      if (video.videoWidth && canvas.width !== video.videoWidth) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!boxes || !boxes.length) return;
+
+      // Colour per label
+      const palette = {
+        stringing:"#e74c3c", warping:"#e67e22", layer_shift:"#f1c40f",
+        under_extrusion:"#3498db", over_extrusion:"#9b59b6",
+        nozzle_clog:"#1abc9c", foreign_object_on_print_area:"#e91e63",
+        not_sticking:"#ff5722", spagetti:"#2ecc71",
+      };
+
+      ctx.lineWidth = 3;
+      ctx.font = "14px sans-serif";
+
+      for (const b of boxes) {
+        const x = b.x * canvas.width;
+        const y = b.y * canvas.height;
+        const w = b.w * canvas.width;
+        const h = b.h * canvas.height;
+        const color = palette[b.label] ?? "#2ecc71";
+        const conf  = b.confidence != null ? ` ${(b.confidence*100).toFixed(0)}%` : "";
+        const label = `${b.label}${conf}`;
+
+        ctx.strokeStyle = color;
+        ctx.strokeRect(x, y, w, h);
+
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(x, Math.max(0, y-18), tw+8, 20);
+        ctx.fillStyle = color;
+        ctx.fillText(label, x+4, Math.max(14, y-4));
+      }
+    }
+
+    // Redraw loop — keeps boxes painted even while video updates
+    function redrawLoop() {
+      for (const cam of cams) drawBoxes(cam, latestBoxes[cam]);
+      requestAnimationFrame(redrawLoop);
+    }
+    requestAnimationFrame(redrawLoop);
+
+    // ── Event log ─────────────────────────────────────────────────────────────
+    let eventCount = 0;
+
+    function fmtTs(isoStr) {
+      try { return new Date(isoStr).toLocaleTimeString(); } catch { return isoStr; }
+    }
+
+    function addEventLine(cam, text, ts, isAlert=false) {
+      const log  = document.getElementById("eventLog");
+      const wrap = document.createElement("div");
+      wrap.className = "eventLine" + (isAlert ? " alert" : "");
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = `[${fmtTs(ts)}] ${cam}`;
+
+      const msg = document.createElement("div");
+      msg.className = "msg";
+      msg.textContent = text;
+
+      wrap.appendChild(meta);
+      wrap.appendChild(msg);
+      log.prepend(wrap);
+
+      eventCount++;
+      document.getElementById("dashStatus").textContent = `events: ${eventCount}`;
+    }
+
+    // ── Alert flash ───────────────────────────────────────────────────────────
+    let alertTimer = null;
+    function flashGlobalAlert(ms=2500) {
+      document.body.classList.add("alerting");
+      if (alertTimer) clearTimeout(alertTimer);
+      alertTimer = setTimeout(() => { document.body.classList.remove("alerting"); alertTimer=null; }, ms);
+    }
+
+    document.getElementById("clearEventsBtn").addEventListener("click", () => {
+      document.getElementById("eventLog").innerHTML = "";
+      eventCount = 0;
+      document.getElementById("dashStatus").textContent = "events: 0";
+      document.body.classList.remove("alerting");
+    });
+
+    // ── Firestore realtime listener ───────────────────────────────────────────
+    // Fired once Firebase SDK is initialised (module script above)
+    window.addEventListener("firestoreReady", () => {
+      const { db, collection, onSnapshot, query, orderBy, limit } = window._firestoreReady;
+
+      document.getElementById("fsStatus").textContent = "Firestore: listening";
+      document.getElementById("fsStatus").style.color = "#2ecc71";
+
+      // Track doc IDs we've already processed so we don't replay old docs on reload
+      const seen = new Set();
+      const pageLoadTime = new Date();
+
+      const q = query(
+        collection(db, "alerts"),
+        orderBy("created_at", "desc"),
+        limit(50)
+      );
+
+      onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type !== "added") return;
+
+          const docId = change.doc.id;
+          if (seen.has(docId)) return;
+          const docTime = d.created_at?.toDate?.() ?? new Date(0);
+          if (docTime < pageLoadTime) { seen.add(docId); latestBoxes[cam] = []; return; }
+          seen.add(docId);
+
+          const d = change.doc.data();
+          const cam         = d.camera_id ?? "unknown";
+          const detections  = d.detections ?? [];
+          const ts          = d.timestamp  ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
+          const isHighSev   = detections.some(det =>
+            ["spagetti","not_sticking","layer_shift"].includes(det.label)
+          );
+
+          // Update canvas overlay for this camera
+          if (cams.includes(cam)) {
+            latestBoxes[cam] = detections.map(det => ({
+              label:      det.label,
+              confidence: det.confidence,
+              x: det.x ?? (det.bbox?.[0] ?? 0) / 640,
+              y: det.y ?? (det.bbox?.[1] ?? 0) / 480,
+              w: det.w ?? ((det.bbox?.[2] ?? 0) - (det.bbox?.[0] ?? 0)) / 640,
+              h: det.h ?? ((det.bbox?.[3] ?? 0) - (det.bbox?.[1] ?? 0)) / 480,
+            }));
+          }
+
+          // Log each detection
+          for (const det of detections) {
+            const conf = det.confidence != null ? ` (${(det.confidence*100).toFixed(0)}%)` : "";
+            addEventLine(cam, `${det.label}${conf}`, ts, isHighSev);
+          }
+
+          // Flash red border for severe detections
+          if (isHighSev) flashGlobalAlert(3000);
+        });
+      }, (err) => {
+        console.error("Firestore error:", err);
+        document.getElementById("fsStatus").textContent = "Firestore: error";
+        document.getElementById("fsStatus").style.color = "#e74c3c";
+      });
+    });
+
+    // ── Boot ──────────────────────────────────────────────────────────────────
+    startAll();
+  </script>
+</body>
+</html>

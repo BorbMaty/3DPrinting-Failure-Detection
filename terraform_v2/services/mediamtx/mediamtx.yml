@@ -1,0 +1,17 @@
+api: no
+metrics: no
+pprof: no
+
+rtspAddress: :8554
+rtmpAddress: :8080
+hlsAddress: :8888
+webrtcAddress: :8889
+srtAddress: :8890
+
+paths:
+  cam1:
+    source: publisher
+  cam2:
+    source: publisher
+  cam3:
+    source: publisher

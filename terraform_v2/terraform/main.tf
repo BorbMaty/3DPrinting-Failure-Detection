@@ -118,7 +118,7 @@ resource "google_pubsub_subscription" "frames_push" {
   ack_deadline_seconds = 60
 
   push_config {
-    push_endpoint = "https://judge-placeholder.run.app/predict"
+    push_endpoint = "https://europe-west1-aiplatform.googleapis.com/v1/projects/printermonitor-488112/locations/europe-west1/endpoints/9105488997194399744:predict"
   }
 
   dead_letter_policy {
@@ -341,8 +341,8 @@ resource "google_cloud_run_v2_service" "frame_extractor" {
         value = google_pubsub_topic.frames.name
       }
       env {
-        name  = "RTSP_URL"
-        value = "rtsp://100.73.126.106:8554/cam1"
+        name  = "RTSP_URLS"
+        value = "rtsp://82.77.240.4:8554/cam1,rtsp://82.77.240.4:8554/cam2,rtsp://82.77.240.4:8554/cam3"
       }
       env {
         name  = "CAPTURE_FPS"
