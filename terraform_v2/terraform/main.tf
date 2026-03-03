@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
     google-beta = {
       source  = "hashicorp/google-beta"
       version = "~> 5.0"
@@ -138,6 +142,11 @@ resource "google_firestore_database" "default" {
   location_id = "eur3"
   type        = "FIRESTORE_NATIVE"
 
+    lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
+
   depends_on = [google_project_service.apis]
 }
 
@@ -157,6 +166,8 @@ resource "google_firestore_index" "alerts_camera_ts" {
 
   depends_on = [google_firestore_database.default]
 }
+
+
 
 # ── Service Accounts ──────────────────────────────────────────────────────────
 
@@ -250,11 +261,11 @@ resource "google_cloud_run_v2_service" "mediamtx" {
 
       env {
         name  = "MTX_PROTOCOLS"
-        value = "tcp,webrtc"
+        value = "tcp"
       }
       env {
         name  = "MTX_WEBRTCADDRESS"
-        value = ":8889"
+        value = ":8080"
       }
       env {
         name  = "MTX_LOGLEVEL"
@@ -263,7 +274,7 @@ resource "google_cloud_run_v2_service" "mediamtx" {
 
       ports {
         name           = "http1"
-        container_port = 8889
+        container_port = 8080
       }
 
       resources {
@@ -395,65 +406,39 @@ resource "google_vertex_ai_endpoint" "judge" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_vertex_ai_model" "judge" {
-  provider     = google-beta
-  display_name = "yolov8x-printermonitor"
-  location     = var.region
 
-  container_spec {
-    image_uri = "${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/judge:latest"
-
-    env {
-      name  = "GCP_PROJECT"
-      value = var.project_id
-    }
-    env {
-      name  = "DETECTIONS_TOPIC"
-      value = google_pubsub_topic.detections.name
-    }
-    env {
-      name  = "MODEL_PATH"
-      value = "/app/best.pt"
-    }
-    env {
-      name  = "CONF_THRESHOLD"
-      value = var.conf_threshold
-    }
-
-    health_route  = "/healthz"
-    predict_route = "/predict"
-
-    ports {
-      container_port = 8080
-    }
+resource "null_resource" "judge_model_deploy" {
+  triggers = {
+    image = "${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/judge:latest"
   }
 
-  depends_on = [
-    google_project_service.apis,
-    google_artifact_registry_repository.printermonitor,
-  ]
-}
-
-resource "google_vertex_ai_endpoint_deployed_model" "judge" {
-  provider     = google-beta
-  endpoint     = google_vertex_ai_endpoint.judge.id
-  location     = var.region
-  display_name = "judge-deployed"
-  model        = google_vertex_ai_model.judge.id
-
-  dedicated_resources {
-    machine_spec {
-      machine_type      = "n1-standard-4"
-      accelerator_type  = "NVIDIA_TESLA_T4"
-      accelerator_count = 1
-    }
-    min_replica_count = 0
-    max_replica_count = 2
+  provisioner "local-exec" {
+    command = <<-EOT
+      MODEL_ID=$(gcloud ai models upload \
+        --region=${var.region} \
+        --display-name=yolov8x-printermonitor \
+        --container-image-uri=${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/judge:latest \
+        --container-predict-route=/predict \
+        --container-health-route=/healthz \
+        --container-ports=8080 \
+        --container-env-vars=GCP_PROJECT=${var.project_id},DETECTIONS_TOPIC=detections-out,MODEL_PATH=/app/best.pt,CONF_THRESHOLD=${var.conf_threshold} \
+        --format="value(model)" \
+        --project=${var.project_id} || true)
+      gcloud ai endpoints deploy-model ${google_vertex_ai_endpoint.judge.name} \
+        --region=${var.region} \
+        --model=$MODEL_ID \
+        --display-name=judge-deployed \
+        --machine-type=n1-standard-4 \
+        --accelerator=type=nvidia-tesla-t4,count=1 \
+        --min-replica-count=0 \
+        --max-replica-count=2 \
+        --project=${var.project_id} || true
+    EOT
   }
 
   depends_on = [
     google_vertex_ai_endpoint.judge,
-    google_vertex_ai_model.judge,
+    google_artifact_registry_repository.printermonitor,
   ]
 }
 

@@ -5,7 +5,7 @@ output "mediamtx_url" {
 
 output "mediamtx_whep_url" {
   description = "Full WHEP endpoint for browser WebRTC player"
-  value       = "${google_cloud_run_v2_service.mediamtx.uri}/whep"
+  value       = google_cloud_run_v2_service.mediamtx.uri != null ? "${google_cloud_run_v2_service.mediamtx.uri}/whep" : ""
 }
 
 output "frame_extractor_url" {
