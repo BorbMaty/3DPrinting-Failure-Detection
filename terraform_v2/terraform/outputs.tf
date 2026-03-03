@@ -1,21 +1,11 @@
-output "mediamtx_url" {
-  description = "MediaMTX Cloud Run URL (WebRTC WHEP base)"
-  value       = google_cloud_run_v2_service.mediamtx.uri
-}
-
 output "mediamtx_whep_url" {
-  description = "Full WHEP endpoint for browser WebRTC player"
-  value       = google_cloud_run_v2_service.mediamtx.uri != null ? "${google_cloud_run_v2_service.mediamtx.uri}/whep" : ""
-}
-
-output "frame_extractor_url" {
-  description = "Frame Extractor Cloud Run URL"
-  value       = google_cloud_run_v2_service.frame_extractor.uri
+  description = "WebRTC WHEP URL (Cloudflare tunnel on Pi)"
+  value       = "https://<cloudflare-tunnel-url>/whep"
 }
 
 output "vertex_endpoint_id" {
   description = "Vertex AI Endpoint ID for the Judge Service"
-  value       = google_vertex_ai_endpoint.judge.id
+  value       = "9105488997194399744"
 }
 
 output "frames_topic" {

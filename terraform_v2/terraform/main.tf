@@ -31,7 +31,6 @@ provider "google-beta" {
 
 resource "google_project_service" "apis" {
   for_each = toset([
-    "run.googleapis.com",
     "pubsub.googleapis.com",
     "firestore.googleapis.com",
     "aiplatform.googleapis.com",
@@ -142,7 +141,7 @@ resource "google_firestore_database" "default" {
   location_id = "eur3"
   type        = "FIRESTORE_NATIVE"
 
-    lifecycle {
+  lifecycle {
     prevent_destroy = true
     ignore_changes  = all
   }
@@ -167,18 +166,14 @@ resource "google_firestore_index" "alerts_camera_ts" {
   depends_on = [google_firestore_database.default]
 }
 
-
-
 # ── Service Accounts ──────────────────────────────────────────────────────────
 
-resource "google_service_account" "mediamtx" {
-  account_id   = "sa-mediamtx"
-  display_name = "MediaMTX RTSP/WebRTC Service"
-}
+# Note: sa-mediamtx and sa-frame-extractor run on the Raspberry Pi,
+# not on Cloud Run. The frame extractor SA key is deployed to the Pi.
 
 resource "google_service_account" "frame_extractor" {
   account_id   = "sa-frame-extractor"
-  display_name = "Frame Extractor Service"
+  display_name = "Frame Extractor Service (runs on Pi)"
 }
 
 resource "google_service_account" "judge" {
@@ -241,206 +236,12 @@ resource "google_project_iam_member" "pubsub_sa_token_creator" {
   member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
-# ── Cloud Run: MediaMTX ───────────────────────────────────────────────────────
-
-resource "google_cloud_run_v2_service" "mediamtx" {
-  provider = google-beta
-  name     = "mediamtx"
-  location = var.region
-
-  template {
-    service_account = google_service_account.mediamtx.email
-
-    scaling {
-      min_instance_count = 1
-      max_instance_count = 3
-    }
-
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/mediamtx:latest"
-
-      env {
-        name  = "MTX_PROTOCOLS"
-        value = "tcp"
-      }
-      env {
-        name  = "MTX_WEBRTCADDRESS"
-        value = ":8080"
-      }
-      env {
-        name  = "MTX_LOGLEVEL"
-        value = "info"
-      }
-
-      ports {
-        name           = "http1"
-        container_port = 8080
-      }
-
-      resources {
-        limits = {
-          cpu    = "2"
-          memory = "2Gi"
-        }
-        cpu_idle          = false
-        startup_cpu_boost = true
-      }
-
-      liveness_probe {
-        http_get { path = "/" }
-        initial_delay_seconds = 10
-        period_seconds        = 30
-        failure_threshold     = 3
-      }
-    }
-  }
-
-  traffic {
-    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-    percent = 100
-  }
-
-  depends_on = [
-    google_project_service.apis,
-    google_artifact_registry_repository.printermonitor,
-  ]
-}
-
-resource "google_cloud_run_v2_service_iam_member" "mediamtx_public" {
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.mediamtx.name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
-
-# ── Cloud Run: Frame Extractor ────────────────────────────────────────────────
-
-resource "google_cloud_run_v2_service" "frame_extractor" {
-  provider = google-beta
-  name     = "frame-extractor"
-  location = var.region
-
-  template {
-    service_account = google_service_account.frame_extractor.email
-
-    scaling {
-      min_instance_count = 1
-      max_instance_count = 1
-    }
-
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/frame-extractor:latest"
-
-      env {
-        name  = "GCP_PROJECT"
-        value = var.project_id
-      }
-      env {
-        name  = "FRAMES_TOPIC"
-        value = google_pubsub_topic.frames.name
-      }
-      env {
-        name  = "RTSP_URLS"
-        value = "rtsp://82.77.240.4:8554/cam1,rtsp://82.77.240.4:8554/cam2,rtsp://82.77.240.4:8554/cam3"
-      }
-      env {
-        name  = "CAPTURE_FPS"
-        value = var.capture_fps
-      }
-      env {
-        name  = "JPEG_QUALITY"
-        value = "70"
-      }
-      env {
-        name  = "FRAME_WIDTH"
-        value = "640"
-      }
-      env {
-        name  = "FRAME_HEIGHT"
-        value = "480"
-      }
-
-      ports {
-        name           = "http1"
-        container_port = 8080
-      }
-
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "1Gi"
-        }
-        cpu_idle          = false
-        startup_cpu_boost = true
-      }
-
-      liveness_probe {
-        http_get { path = "/healthz" }
-        initial_delay_seconds = 15
-        period_seconds        = 30
-        failure_threshold     = 3
-      }
-    }
-  }
-
-  traffic {
-    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-    percent = 100
-  }
-
-  depends_on = [
-    google_project_service.apis,
-    google_artifact_registry_repository.printermonitor,
-    google_pubsub_topic.frames,
-  ]
-}
-
 # ── Vertex AI ─────────────────────────────────────────────────────────────────
-
-resource "google_vertex_ai_endpoint" "judge" {
-  name         = "judge-endpoint"
-  display_name = "PrinterMonitor Judge Endpoint"
-  location     = var.region
-
-  depends_on = [google_project_service.apis]
-}
-
-
-resource "null_resource" "judge_model_deploy" {
-  triggers = {
-    image = "${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/judge:latest"
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      MODEL_ID=$(gcloud ai models upload \
-        --region=${var.region} \
-        --display-name=yolov8x-printermonitor \
-        --container-image-uri=${var.region}-docker.pkg.dev/${var.project_id}/printermonitor/judge:latest \
-        --container-predict-route=/predict \
-        --container-health-route=/healthz \
-        --container-ports=8080 \
-        --container-env-vars=GCP_PROJECT=${var.project_id},DETECTIONS_TOPIC=detections-out,MODEL_PATH=/app/best.pt,CONF_THRESHOLD=${var.conf_threshold} \
-        --format="value(model)" \
-        --project=${var.project_id} || true)
-      gcloud ai endpoints deploy-model ${google_vertex_ai_endpoint.judge.name} \
-        --region=${var.region} \
-        --model=$MODEL_ID \
-        --display-name=judge-deployed \
-        --machine-type=n1-standard-4 \
-        --accelerator=type=nvidia-tesla-t4,count=1 \
-        --min-replica-count=0 \
-        --max-replica-count=2 \
-        --project=${var.project_id} || true
-    EOT
-  }
-
-  depends_on = [
-    google_vertex_ai_endpoint.judge,
-    google_artifact_registry_repository.printermonitor,
-  ]
-}
+# Endpoint deployed manually:
+#   Endpoint ID : 9105488997194399744
+#   Model ID    : 7050633706276388864
+#   Machine type: n1-standard-4
+# Managed outside Terraform to avoid accidental destruction.
 
 # ── Cloud Function: AlertManager ─────────────────────────────────────────────
 
