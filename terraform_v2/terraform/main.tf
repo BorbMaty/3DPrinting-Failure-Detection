@@ -46,6 +46,10 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "logging.googleapis.com",
     "billingbudgets.googleapis.com",
+    # Required for FCM web push token registration (fixes messaging/token-subscribe-failed)
+    "firebaseinstallations.googleapis.com",
+    "fcm.googleapis.com",
+    "fcmregistrations.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -112,16 +116,18 @@ resource "google_pubsub_topic" "frames_dead_letter" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_pubsub_subscription" "frames_push" {
-  name    = "frames-in-judge-push"
+resource "google_pubsub_subscription" "frames_pull" {
+  # Pull subscription: frame_extractor.py on Pi pulls this, calls Vertex AI
+  # with the correct predict request format, then publishes to detections-out.
+  # A direct Pub/Sub push to Vertex AI predict does NOT work — the endpoint
+  # expects { "instances": [...] } not a raw Pub/Sub envelope.
+  name    = "frames-in-judge-pull"
   topic   = google_pubsub_topic.frames.name
   project = var.project_id
 
-  ack_deadline_seconds = 60
-
-  push_config {
-    push_endpoint = "https://europe-west1-aiplatform.googleapis.com/v1/projects/printermonitor-488112/locations/europe-west1/endpoints/9105488997194399744:predict"
-  }
+  ack_deadline_seconds       = 60
+  message_retention_duration = "3600s"
+  retain_acked_messages      = false
 
   dead_letter_policy {
     dead_letter_topic     = google_pubsub_topic.frames_dead_letter.id
@@ -216,6 +222,14 @@ resource "google_project_iam_member" "alert_manager_firestore" {
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_service_account.alert_manager.email}"
 }
+
+# Required for firebase_admin.messaging.send() to authenticate with FCM
+resource "google_project_iam_member" "alert_manager_firebase_admin" {
+  project = var.project_id
+  role    = "roles/firebase.sdkAdminServiceAgent"
+  member  = "serviceAccount:${google_service_account.alert_manager.email}"
+}
+
 
 resource "google_project_iam_member" "alert_manager_eventarc" {
   project = var.project_id
@@ -376,7 +390,9 @@ resource "google_billing_budget" "monthly" {
 
 data "archive_file" "budget_notifier_source" {
   type        = "zip"
-  source_dir  = "${path.module}/../services/budget-notifier"
+  # Both handlers (handle_detection + handle_budget_alert) live in the same
+  # services/alert-manager directory. Using that as source for both functions.
+  source_dir  = "${path.module}/../services/alert-manager"
   output_path = "/tmp/budget-notifier.zip"
 }
 
@@ -426,4 +442,27 @@ resource "google_cloudfunctions2_function" "budget_notifier" {
     google_storage_bucket_object.budget_notifier_source,
     google_pubsub_topic.budget_notifications,
   ]
+}
+# ── Permanent Cloudflare Tunnel (Pi-side config) ──────────────────────────────
+#
+# SETUP STEPS (one-time, on Pi):
+#   1. Install cloudflared:  curl -L https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+#   2. Create named tunnel:  cloudflared tunnel create printermonitor
+#   3. Note the tunnel ID and credentials file path (~/.cloudflared/<uuid>.json)
+#   4. Add DNS route:        cloudflared tunnel route dns printermonitor printermonitor.yourdomain.com
+#   5. Set var:              export TF_VAR_cloudflare_tunnel_hostname="printermonitor.yourdomain.com"
+#   6. Update index.html:    const HOST = "printermonitor.yourdomain.com"
+#
+# The tunnel itself runs on the Pi via systemd (see cloudflared-tunnel.service below).
+# Terraform just documents the stable hostname — the tunnel process is Pi-managed.
+
+locals {
+  # Once var.cloudflare_tunnel_hostname is set, this becomes your stable WebRTC host
+  mediamtx_host = var.cloudflare_tunnel_hostname != "" ? var.cloudflare_tunnel_hostname : "PENDING-SET-cloudflare_tunnel_hostname-variable"
+}
+
+resource "google_project_iam_member" "frame_extractor_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.frame_extractor.email}"
 }

@@ -1,5 +1,5 @@
-importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/11.4.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/11.4.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
   apiKey:            "AIzaSyCjp-IZzt2CfXEwBxnn2icv8LxvrsJmieQ",
@@ -7,7 +7,7 @@ firebase.initializeApp({
   projectId:         "printermonitor-488112",
   storageBucket:     "printermonitor-488112.firebasestorage.app",
   messagingSenderId: "895714392909",
-  appId:             "1:895714392909:web:260cb1a2b15468bead1504",
+  appId:             "1:895714392909:web:553314befa3149f6ad1504",
 });
 
 const messaging = firebase.messaging();
