@@ -45,3 +45,9 @@ variable "cloudflare_tunnel_hostname" {
   type        = string
   default     = ""
 }
+
+variable "vertex_endpoint_id" {
+  description = "Vertex AI Endpoint ID for the Judge service"
+  type        = string
+  default     = "6900414029643120640"
+}

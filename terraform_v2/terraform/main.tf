@@ -116,31 +116,7 @@ resource "google_pubsub_topic" "frames_dead_letter" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_pubsub_subscription" "frames_pull" {
-  # Pull subscription: frame_extractor.py on Pi pulls this, calls Vertex AI
-  # with the correct predict request format, then publishes to detections-out.
-  # A direct Pub/Sub push to Vertex AI predict does NOT work — the endpoint
-  # expects { "instances": [...] } not a raw Pub/Sub envelope.
-  name    = "frames-in-judge-pull"
-  topic   = google_pubsub_topic.frames.name
-  project = var.project_id
 
-  ack_deadline_seconds       = 60
-  message_retention_duration = "3600s"
-  retain_acked_messages      = false
-
-  dead_letter_policy {
-    dead_letter_topic     = google_pubsub_topic.frames_dead_letter.id
-    max_delivery_attempts = 5
-  }
-
-  retry_policy {
-    minimum_backoff = "10s"
-    maximum_backoff = "300s"
-  }
-
-  depends_on = [google_pubsub_topic.frames]
-}
 
 # ── Firestore ─────────────────────────────────────────────────────────────────
 
@@ -303,7 +279,7 @@ resource "google_cloudfunctions2_function" "alert_manager" {
     service_account_email = google_service_account.alert_manager.email
     max_instance_count    = 10
     available_memory      = "256M"
-    timeout_seconds       = 60
+    timeout_seconds       = 120
 
     environment_variables = {
       GCP_PROJECT          = var.project_id
@@ -453,4 +429,117 @@ resource "google_project_iam_member" "frame_extractor_vertex" {
   project = var.project_id
   role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_service_account.frame_extractor.email}"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADDITION: Dispatcher — bridges frames-in → Vertex AI judge
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Service Account ───────────────────────────────────────────────────────────
+
+resource "google_service_account" "dispatcher" {
+  account_id   = "sa-dispatcher"
+  display_name = "Dispatcher Cloud Function (frames-in → Vertex AI)"
+}
+
+resource "google_project_iam_member" "dispatcher_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.dispatcher.email}"
+}
+
+resource "google_project_iam_member" "dispatcher_eventarc" {
+  project = var.project_id
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${google_service_account.dispatcher.email}"
+}
+
+resource "google_project_iam_member" "dispatcher_pubsub_subscriber" {
+  project = var.project_id
+  role    = "roles/pubsub.subscriber"
+  member  = "serviceAccount:${google_service_account.dispatcher.email}"
+}
+
+# ── Source bundle ─────────────────────────────────────────────────────────────
+
+data "archive_file" "dispatcher_source" {
+  type        = "zip"
+  source_dir  = "${path.module}/../services/dispatcher"
+  output_path = "/tmp/dispatcher.zip"
+}
+
+resource "google_storage_bucket_object" "dispatcher_source" {
+  name   = "dispatcher-${data.archive_file.dispatcher_source.output_md5}.zip"
+  bucket = google_storage_bucket.functions_source.name
+  source = data.archive_file.dispatcher_source.output_path
+}
+
+# ── Cloud Function ────────────────────────────────────────────────────────────
+
+resource "google_cloudfunctions2_function" "dispatcher" {
+  name     = "dispatcher"
+  location = var.region
+
+  build_config {
+    runtime     = "python312"
+    entry_point = "dispatch_frame"
+
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.dispatcher_source.name
+      }
+    }
+  }
+
+  service_config {
+    service_account_email = google_service_account.dispatcher.email
+    max_instance_count    = 10
+    available_memory      = "512M"   # frames are ~100-200KB base64
+    timeout_seconds       = 60
+
+    environment_variables = {
+      GCP_PROJECT        = var.project_id
+      VERTEX_ENDPOINT_ID = var.vertex_endpoint_id
+      VERTEX_REGION      = var.region
+    }
+  }
+
+  event_trigger {
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = google_pubsub_topic.frames.id
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = google_service_account.dispatcher.email
+  }
+
+  depends_on = [
+    google_project_service.apis,
+    google_storage_bucket_object.dispatcher_source,
+    google_pubsub_topic.frames,
+  ]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "dispatcher_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloudfunctions2_function.dispatcher.service_config[0].service
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.dispatcher.email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "alert_manager_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloudfunctions2_function.alert_manager.service_config[0].service
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.alert_manager.email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "budget_notifier_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloudfunctions2_function.budget_notifier.service_config[0].service
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.alert_manager.email}"
 }

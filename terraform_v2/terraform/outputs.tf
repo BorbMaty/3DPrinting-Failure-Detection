@@ -47,3 +47,8 @@ output "dashboard_host_update_command" {
   description = "One-liner to update the HOST in index.html after tunnel hostname is set"
   value       = "sed -i 's|window.MEDIAMTX_HOST || \".*\"|window.MEDIAMTX_HOST || \"${local.mediamtx_host}\"|' index.html"
 }
+
+output "dispatcher_function" {
+  description = "Dispatcher Cloud Function name"
+  value       = google_cloudfunctions2_function.dispatcher.name
+}
