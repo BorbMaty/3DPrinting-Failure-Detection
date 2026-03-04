@@ -443,18 +443,6 @@ resource "google_cloudfunctions2_function" "budget_notifier" {
     google_pubsub_topic.budget_notifications,
   ]
 }
-# ── Permanent Cloudflare Tunnel (Pi-side config) ──────────────────────────────
-#
-# SETUP STEPS (one-time, on Pi):
-#   1. Install cloudflared:  curl -L https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
-#   2. Create named tunnel:  cloudflared tunnel create printermonitor
-#   3. Note the tunnel ID and credentials file path (~/.cloudflared/<uuid>.json)
-#   4. Add DNS route:        cloudflared tunnel route dns printermonitor printermonitor.yourdomain.com
-#   5. Set var:              export TF_VAR_cloudflare_tunnel_hostname="printermonitor.yourdomain.com"
-#   6. Update index.html:    const HOST = "printermonitor.yourdomain.com"
-#
-# The tunnel itself runs on the Pi via systemd (see cloudflared-tunnel.service below).
-# Terraform just documents the stable hostname — the tunnel process is Pi-managed.
 
 locals {
   # Once var.cloudflare_tunnel_hostname is set, this becomes your stable WebRTC host
