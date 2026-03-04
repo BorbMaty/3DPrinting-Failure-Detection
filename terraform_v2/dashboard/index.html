@@ -10,6 +10,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot, query, orderBy, limit }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getMessaging, getToken, onMessage }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
     // ── Firebase config ──────────────────────────────────────────────────────
     const firebaseConfig = {
@@ -22,12 +24,67 @@
       measurementId:     "G-Z17EL9988Q",
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const VAPID_KEY = "BL6UdiBgKj1ln4C3zAX89KFj_ogfDaR-ul_Q0RLKM8eO2PgXegV1BgvhynJqwOy-iHMErSYgj22RNWpyT1LeMeA";
 
-    // Expose to global scope so the non-module script can use it
+    const app       = initializeApp(firebaseConfig);
+    const db        = getFirestore(app);
+    const messaging = getMessaging(app);
+
+    // ── Register service worker & request push permission ────────────────────
+    async function initPush() {
+      if (!("serviceWorker" in navigator) || !("Notification" in window)) return;
+
+      try {
+        const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          console.warn("Push permission denied");
+          updatePushStatus("blocked");
+          return;
+        }
+
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+        console.log("FCM token:", token);
+        updatePushStatus("enabled");
+
+        // Store token in window so it can be sent to backend if needed
+        window._fcmToken = token;
+      } catch (err) {
+        console.error("Push init error:", err);
+        updatePushStatus("error");
+      }
+    }
+
+    function updatePushStatus(state) {
+      const el = document.getElementById("pushStatus");
+      if (!el) return;
+      const map = {
+        enabled: { text: "🔔 Push: on",      color: "#2ecc71" },
+        blocked: { text: "🔕 Push: blocked",  color: "#e67e22" },
+        error:   { text: "⚠️ Push: error",    color: "#e74c3c" },
+        idle:    { text: "🔔 Push: off",       color: "#97a3b6" },
+      };
+      const s = map[state] ?? map.idle;
+      el.textContent  = s.text;
+      el.style.color  = s.color;
+    }
+
+    // Handle foreground messages (tab is focused)
+    onMessage(messaging, (payload) => {
+      const title = payload.notification?.title ?? "PrinterMonitor Alert";
+      const body  = payload.notification?.body  ?? "Defect detected.";
+      const type  = payload.data?.type ?? "defect";
+
+      // Dispatch to main script
+      window.dispatchEvent(new CustomEvent("fcmMessage", { detail: { title, body, type } }));
+    });
+
+    // Expose to global scope
     window._firestoreReady = { db, collection, onSnapshot, query, orderBy, limit };
     window.dispatchEvent(new Event("firestoreReady"));
+
+    // Init push after page load
+    window.addEventListener("load", initPush);
   </script>
 
   <style>
@@ -57,6 +114,8 @@
       border-radius: 18px;
     }
     body.alerting .tile{ border-color: rgba(231,76,60,.30); }
+
+    body.budget-alert header{ border-bottom-color: rgba(241,196,15,.55); }
 
     header{
       flex: 0 0 auto;
@@ -129,7 +188,7 @@
       flex:1 1 auto; min-height:0; padding:12px;
       display:flex; flex-direction:column; gap:10px;
     }
-    .dashRow{ flex:0 0 auto; display:flex; gap:10px; align-items:center; }
+    .dashRow{ flex:0 0 auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .btn{
       padding:8px 12px; border-radius:10px;
       border:1px solid rgba(255,255,255,.10);
@@ -158,23 +217,46 @@
       background:rgba(231,76,60,.10);
     }
     .eventLine.alert .msg{ color:#ffb4b0; }
+    .eventLine.budget{
+      border-color:rgba(241,196,15,.45);
+      background:rgba(241,196,15,.10);
+    }
+    .eventLine.budget .msg{ color:#ffe08a; }
 
-    #fsStatus{
+    #fsStatus, #pushStatus{
       font-size:11px; padding:4px 8px;
       border-radius:999px;
       background:rgba(255,255,255,.04);
       border:1px solid rgba(255,255,255,.08);
       color:var(--muted);
     }
+
+    /* Toast notification */
+    #toast{
+      position:fixed; bottom:24px; right:24px;
+      background:#1e2430; border:1px solid rgba(255,255,255,.12);
+      border-radius:14px; padding:14px 18px;
+      box-shadow:0 8px 32px rgba(0,0,0,.5);
+      max-width:320px; z-index:9999;
+      transform:translateY(120px); opacity:0;
+      transition:transform .3s ease, opacity .3s ease;
+      pointer-events:none;
+    }
+    #toast.show{ transform:translateY(0); opacity:1; }
+    #toast.defect{ border-color:rgba(231,76,60,.5); }
+    #toast.budget { border-color:rgba(241,196,15,.5); }
+    #toast .toast-title{ font-weight:700; font-size:13px; margin-bottom:4px; }
+    #toast .toast-body { font-size:12px; color:var(--muted); }
   </style>
 </head>
 
 <body>
   <header>
     <h1>3-Camera WebRTC Dashboard</h1>
-    <span class="pill" id="hostPill">host: cow-homeless-concluded-corn.trycloudflare.com</span>
+    <span class="pill" id="hostPill">host: –</span>
     <span class="pill" id="hintPill">WHEP → MediaMTX</span>
     <span id="fsStatus">Firestore: connecting…</span>
+    <span id="pushStatus">🔔 Push: …</span>
     <button id="reconnectBtn">Reconnect all</button>
   </header>
 
@@ -231,25 +313,54 @@
     </section>
   </main>
 
+  <!-- Toast -->
+  <div id="toast">
+    <div class="toast-title" id="toastTitle"></div>
+    <div class="toast-body"  id="toastBody"></div>
+  </div>
+
   <script>
     // ── WebRTC config ────────────────────────────────────────────────────────
     const HOST = "cow-homeless-concluded-corn.trycloudflare.com";
+    document.getElementById("hostPill").textContent = `host: ${HOST}`;
     const cams = ["cam1","cam2","cam3"];
     const pcs  = new Map();
-
-    // Track latest detections per camera for canvas overlay
     const latestBoxes = { cam1: [], cam2: [], cam3: [] };
+    const pageLoadTime = new Date();
 
+    // ── Toast ─────────────────────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(title, body, type="defect") {
+      const t = document.getElementById("toast");
+      document.getElementById("toastTitle").textContent = title;
+      document.getElementById("toastBody").textContent  = body;
+      t.className = `show ${type}`;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.className = ""; }, 5000);
+    }
+
+    // Handle foreground FCM messages
+    window.addEventListener("fcmMessage", (e) => {
+      const { title, body, type } = e.detail;
+      showToast(title, body, type);
+      if (type === "budget") {
+        document.body.classList.add("budget-alert");
+        setTimeout(() => document.body.classList.remove("budget-alert"), 5000);
+        addEventLine("system", title + " — " + body, new Date().toISOString(), false, true);
+      }
+    });
+
+    // ── Status helpers ────────────────────────────────────────────────────────
     function setStatus(cam, ok, text) {
       document.getElementById(`dot-${cam}`).classList.toggle("ok",  !!ok);
       document.getElementById(`dot-${cam}`).classList.toggle("bad", ok === false);
       document.getElementById(`status-${cam}`).textContent = text;
     }
 
-    // ── WHEP ─────────────────────────────────────────────────────────────────
+    // ── WHEP ──────────────────────────────────────────────────────────────────
     async function startWhep(cam) {
-      const videoEl = document.getElementById(`v-${cam}`);
-      const whepUrl = `https://${HOST}/${cam}/whep`;
+      const videoEl  = document.getElementById(`v-${cam}`);
+      const whepUrl  = `https://${HOST}/${cam}/whep`;
 
       if (pcs.has(cam)) { try { pcs.get(cam).close(); } catch {} pcs.delete(cam); }
 
@@ -299,7 +410,6 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!boxes || !boxes.length) return;
 
-      // Colour per label
       const palette = {
         stringing:"#e74c3c", warping:"#e67e22", layer_shift:"#f1c40f",
         under_extrusion:"#3498db", over_extrusion:"#9b59b6",
@@ -330,7 +440,6 @@
       }
     }
 
-    // Redraw loop — keeps boxes painted even while video updates
     function redrawLoop() {
       for (const cam of cams) drawBoxes(cam, latestBoxes[cam]);
       requestAnimationFrame(redrawLoop);
@@ -344,10 +453,10 @@
       try { return new Date(isoStr).toLocaleTimeString(); } catch { return isoStr; }
     }
 
-    function addEventLine(cam, text, ts, isAlert=false) {
+    function addEventLine(cam, text, ts, isAlert=false, isBudget=false) {
       const log  = document.getElementById("eventLog");
       const wrap = document.createElement("div");
-      wrap.className = "eventLine" + (isAlert ? " alert" : "");
+      wrap.className = "eventLine" + (isAlert ? " alert" : "") + (isBudget ? " budget" : "");
 
       const meta = document.createElement("div");
       meta.className = "meta";
@@ -378,19 +487,17 @@
       eventCount = 0;
       document.getElementById("dashStatus").textContent = "events: 0";
       document.body.classList.remove("alerting");
+      document.body.classList.remove("budget-alert");
     });
 
     // ── Firestore realtime listener ───────────────────────────────────────────
-    // Fired once Firebase SDK is initialised (module script above)
     window.addEventListener("firestoreReady", () => {
       const { db, collection, onSnapshot, query, orderBy, limit } = window._firestoreReady;
 
       document.getElementById("fsStatus").textContent = "Firestore: listening";
       document.getElementById("fsStatus").style.color = "#2ecc71";
 
-      // Track doc IDs we've already processed so we don't replay old docs on reload
       const seen = new Set();
-      const pageLoadTime = new Date();
 
       const q = query(
         collection(db, "alerts"),
@@ -404,19 +511,19 @@
 
           const docId = change.doc.id;
           if (seen.has(docId)) return;
-          const docTime = d.created_at?.toDate?.() ?? new Date(0);
-          if (docTime < pageLoadTime) { seen.add(docId); latestBoxes[cam] = []; return; }
           seen.add(docId);
 
           const d = change.doc.data();
-          const cam         = d.camera_id ?? "unknown";
-          const detections  = d.detections ?? [];
-          const ts          = d.timestamp  ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
-          const isHighSev   = detections.some(det =>
+          const docTime = d.created_at?.toDate?.() ?? new Date(0);
+          if (docTime < pageLoadTime) return;
+
+          const cam        = d.camera_id ?? "unknown";
+          const detections = d.detections ?? [];
+          const ts         = d.timestamp  ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
+          const isHighSev  = detections.some(det =>
             ["spagetti","not_sticking","layer_shift"].includes(det.label)
           );
 
-          // Update canvas overlay for this camera
           if (cams.includes(cam)) {
             latestBoxes[cam] = detections.map(det => ({
               label:      det.label,
@@ -428,14 +535,19 @@
             }));
           }
 
-          // Log each detection
           for (const det of detections) {
             const conf = det.confidence != null ? ` (${(det.confidence*100).toFixed(0)}%)` : "";
             addEventLine(cam, `${det.label}${conf}`, ts, isHighSev);
           }
 
-          // Flash red border for severe detections
-          if (isHighSev) flashGlobalAlert(3000);
+          if (isHighSev) {
+            flashGlobalAlert(3000);
+            showToast(
+              "⚠️ Defect Detected",
+              `${cam}: ${detections.map(d => d.label).join(", ")}`,
+              "defect"
+            );
+          }
         });
       }, (err) => {
         console.error("Firestore error:", err);

@@ -18,8 +18,10 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
-  region  = var.region
+  project               = var.project_id
+  region                = var.region
+  billing_project       = var.project_id
+  user_project_override = true
 }
 
 provider "google-beta" {
@@ -43,6 +45,7 @@ resource "google_project_service" "apis" {
     "firebaseapphosting.googleapis.com",
     "iam.googleapis.com",
     "logging.googleapis.com",
+    "billingbudgets.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -308,5 +311,119 @@ resource "google_cloudfunctions2_function" "alert_manager" {
     google_storage_bucket_object.alert_manager_source,
     google_firestore_database.default,
     google_pubsub_topic.detections,
+  ]
+}
+
+# ── Pub/Sub: Budget notifications ─────────────────────────────────────────────
+
+resource "google_pubsub_topic" "budget_notifications" {
+  name    = "budget-notifications"
+  project = var.project_id
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_pubsub_subscription" "budget_notifications_sub" {
+  name    = "budget-notifications-sub"
+  topic   = google_pubsub_topic.budget_notifications.name
+  project = var.project_id
+
+  ack_deadline_seconds = 60
+}
+
+# IAM for billing budget publisher granted manually
+
+# ── Billing Budget ─────────────────────────────────────────────────────────────
+
+resource "google_billing_budget" "monthly" {
+  billing_account = "0124C1-D405D9-F46DB8"
+  display_name    = "PrinterMonitor $5 Alert"
+
+  budget_filter {
+    projects = ["projects/895714392909"]
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = "5"
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5   # alert at $2.50
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 1.0   # alert at $5.00
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 1.2   # alert at $6.00 (overage)
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  all_updates_rule {
+    pubsub_topic                     = google_pubsub_topic.budget_notifications.id
+    schema_version                   = "1.0"
+    monitoring_notification_channels = []
+  }
+}
+
+# ── Cloud Function: Budget Notifier ───────────────────────────────────────────
+
+data "archive_file" "budget_notifier_source" {
+  type        = "zip"
+  source_dir  = "${path.module}/../services/budget-notifier"
+  output_path = "/tmp/budget-notifier.zip"
+}
+
+resource "google_storage_bucket_object" "budget_notifier_source" {
+  name   = "budget-notifier-${data.archive_file.budget_notifier_source.output_md5}.zip"
+  bucket = google_storage_bucket.functions_source.name
+  source = data.archive_file.budget_notifier_source.output_path
+}
+
+resource "google_cloudfunctions2_function" "budget_notifier" {
+  name     = "budget-notifier"
+  location = var.region
+
+  build_config {
+    runtime     = "python312"
+    entry_point = "handle_budget_alert"
+
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.budget_notifier_source.name
+      }
+    }
+  }
+
+  service_config {
+    service_account_email = google_service_account.alert_manager.email
+    max_instance_count    = 3
+    available_memory      = "256M"
+    timeout_seconds       = 60
+
+    environment_variables = {
+      GCP_PROJECT = var.project_id
+    }
+  }
+
+  event_trigger {
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = google_pubsub_topic.budget_notifications.id
+    retry_policy          = "RETRY_POLICY_DO_NOT_RETRY"
+    service_account_email = google_service_account.alert_manager.email
+  }
+
+  depends_on = [
+    google_project_service.apis,
+    google_storage_bucket_object.budget_notifier_source,
+    google_pubsub_topic.budget_notifications,
   ]
 }
