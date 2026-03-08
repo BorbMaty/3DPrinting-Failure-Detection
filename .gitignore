@@ -7,6 +7,8 @@
 *.csv
 *.txt
 *.avi
+
+*.mp4
 # Terraform
 **/.terraform/
 *.tfstate
@@ -20,6 +22,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+*.pt
 
 # GCP credentials / service account keys
 *.json
@@ -51,4 +54,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-*.swp
+*.swp*.log
+firebase-debug.log
+*.zip*.log
+*.zip
