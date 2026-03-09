@@ -105,6 +105,9 @@ jobs:
         run: |
           terraform plan -no-color -out=tfplan 2>&1 | tee plan_output.txt
           echo "plan_exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        env:
+          TF_VAR_gmail_address: ${{ secrets.GMAIL_ADDRESS }}
+          TF_VAR_gmail_app_password: ${{ secrets.GMAIL_APP_PASSWORD }}
         working-directory: ${{ env.TF_ROOT }}
         continue-on-error: true
 
@@ -179,7 +182,7 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -input=false tfplan
+        env:
+          TF_VAR_gmail_address: ${{ secrets.GMAIL_ADDRESS }}
+          TF_VAR_gmail_app_password: ${{ secrets.GMAIL_APP_PASSWORD }}
         working-directory: ${{ env.TF_ROOT }}
-
-
-

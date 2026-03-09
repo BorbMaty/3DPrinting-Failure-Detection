@@ -35,3 +35,14 @@ variable "vertex_endpoint_id" {
   type        = string
   default     = "6900414029643120640"
 }
+variable "gmail_address" {
+  description = "Gmail address for alert notifications"
+  type        = string
+  sensitive   = true
+}
+
+variable "gmail_app_password" {
+  description = "Gmail app password for alert notifications"
+  type        = string
+  sensitive   = true
+}

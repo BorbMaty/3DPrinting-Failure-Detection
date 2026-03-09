@@ -287,6 +287,8 @@ resource "google_cloudfunctions2_function" "alert_manager" {
       GCP_PROJECT          = var.project_id
       FIRESTORE_COLLECTION = "alerts"
       CONF_THRESHOLD       = var.conf_threshold
+      GMAIL_ADDRESS        = var.gmail_address
+      GMAIL_APP_PASSWORD   = var.gmail_app_password
     }
   }
 
@@ -403,7 +405,9 @@ resource "google_cloudfunctions2_function" "budget_notifier" {
     timeout_seconds       = 60
 
     environment_variables = {
-      GCP_PROJECT = var.project_id
+      GCP_PROJECT        = var.project_id
+      GMAIL_ADDRESS      = var.gmail_address
+      GMAIL_APP_PASSWORD = var.gmail_app_password
     }
   }
 
