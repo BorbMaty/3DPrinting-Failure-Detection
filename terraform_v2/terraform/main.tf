@@ -79,13 +79,6 @@ resource "google_storage_bucket" "models" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_storage_bucket_object" "model" {
-  name   = var.model_gcs_path
-  bucket = google_storage_bucket.models.name
-  source = "/home/lucy/Desktop/datasetmaybefinal/yolov8x_finetune_weighted/weights/best.pt"
-
-  depends_on = [google_storage_bucket.models]
-}
 
 # ── Artifact Registry ─────────────────────────────────────────────────────────
 
