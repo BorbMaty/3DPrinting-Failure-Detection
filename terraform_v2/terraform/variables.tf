@@ -28,17 +28,6 @@ variable "conf_threshold" {
   default     = "0.35"
 }
 
-variable "capture_fps" {
-  description = "Frames per second the frame extractor captures"
-  type        = number
-  default     = 2
-}
-variable "cloudflare_tunnel_token" {
-  description = "Cloudflare Tunnel token (from cloudflared tunnel create printermonitor). Set via TF_VAR_cloudflare_tunnel_token env var or terraform.tfvars. Leave empty until permanent tunnel is created."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
 
 variable "cloudflare_tunnel_hostname" {
   description = "Permanent hostname for the Cloudflare tunnel (e.g. printermonitor.yourdomain.com). Set after creating a Named Tunnel."
