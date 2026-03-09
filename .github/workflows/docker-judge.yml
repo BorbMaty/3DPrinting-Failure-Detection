@@ -1,9 +1,7 @@
 # .github/workflows/docker-judge.yml
 # Build and push the Judge container to Artifact Registry
 # Triggers on changes to the judge service code
-
 name: "Docker: Judge"
-
 on:
   push:
     branches: [main]
@@ -15,44 +13,41 @@ on:
     paths:
       - "terraform_v2/services/judge/**"
       - ".github/workflows/docker-judge.yml"
-
 env:
   GCP_PROJECT_ID: printermonitor-488112
   GCP_REGION: europe-west1
   REGISTRY: europe-west1-docker.pkg.dev/printermonitor-488112/printermonitor
   IMAGE_NAME: judge
-
 jobs:
   build:
     name: "Build & Push"
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
-
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
+      # ↓ ADD THIS STEP ↓
+      - name: Download model from GCS
+        run: |
+          gsutil cp gs://printermonitor-488112-models/yolov8x/best.pt \
+            terraform_v2/services/judge/best.pt
+      # ↑ ADD THIS STEP ↑
       - name: Build image
         run: |
           docker build \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
             terraform_v2/services/judge/
-
-      # Only push on merge to main
       - name: Push image
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
