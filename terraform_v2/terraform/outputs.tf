@@ -18,10 +18,6 @@ output "detections_topic" {
   value       = google_pubsub_topic.detections.name
 }
 
-output "model_gcs_uri" {
-  description = "GCS URI of the uploaded YOLOv8x model"
-  value       = "gs://${google_storage_bucket.models.name}/${google_storage_bucket_object.model.name}"
-}
 
 output "artifact_registry" {
   description = "Docker image registry prefix"
