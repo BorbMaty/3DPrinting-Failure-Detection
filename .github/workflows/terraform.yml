@@ -139,7 +139,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: ${{ env.TF_ROOT }}/tfplan
+          path: |
+            ${{ env.TF_ROOT }}/tfplan
+            ${{ env.TF_ROOT }}/*.zip
 
   # ── Apply (main branch only) ─────────────────────────────────────────
   apply:

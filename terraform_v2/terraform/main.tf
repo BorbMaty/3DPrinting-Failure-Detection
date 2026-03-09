@@ -252,7 +252,7 @@ resource "google_storage_bucket" "functions_source" {
 data "archive_file" "alert_manager_source" {
   type        = "zip"
   source_dir  = "${path.module}/../services/alert-manager"
-  output_path = "/tmp/alert-manager.zip"
+  output_path = "${path.module}/alert-manager.zip"
 }
 
 resource "google_storage_bucket_object" "alert_manager_source" {
@@ -371,7 +371,7 @@ data "archive_file" "budget_notifier_source" {
   # Both handlers (handle_detection + handle_budget_alert) live in the same
   # services/alert-manager directory. Using that as source for both functions.
   source_dir  = "${path.module}/../services/alert-manager"
-  output_path = "/tmp/budget-notifier.zip"
+  output_path = "${path.module}/budget-notifier.zip"
 }
 
 resource "google_storage_bucket_object" "budget_notifier_source" {
@@ -467,7 +467,7 @@ resource "google_project_iam_member" "dispatcher_pubsub_subscriber" {
 data "archive_file" "dispatcher_source" {
   type        = "zip"
   source_dir  = "${path.module}/../services/dispatcher"
-  output_path = "/tmp/dispatcher.zip"
+  output_path = "${path.module}/dispatcher.zip"
 }
 
 resource "google_storage_bucket_object" "dispatcher_source" {
