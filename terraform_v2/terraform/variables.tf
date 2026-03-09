@@ -16,11 +16,6 @@ variable "model_gcs_bucket" {
   default     = "printermonitor-488112-models"
 }
 
-variable "model_gcs_path" {
-  description = "Path inside the bucket where best.pt lives"
-  type        = string
-  default     = "yolov8x/best.pt"
-}
 
 variable "conf_threshold" {
   description = "YOLO confidence threshold for detections"
