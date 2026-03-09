@@ -1,0 +1,13 @@
+# .checkov.yaml
+directory:
+  - .
+skip-check:
+  - CKV_GCP_29   # Google-managed encryption is fine for thesis
+  - CKV_GCP_62   # Bucket logging not needed
+  - CKV_SECRET_4 # False positive in firebase config
+  - CKV_DOCKER_7 # Using :latest for dev convenience
+  - CKV_GCP_78   # Cloud Function allow unauthenticated (Eventarc handles auth)
+
+quiet: true
+compact: true
+soft-fail: false

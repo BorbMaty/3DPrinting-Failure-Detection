@@ -1,0 +1,22 @@
+default_language_version:
+  python: "3.12"
+
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.97.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_tflint
+        args:
+          - --args=--init
+          - --args=--recursive
+
+  - repo: https://github.com/bridgecrewio/checkov.git
+    rev: 3.2.325
+    hooks:
+      - id: checkov
+        verbose: true
+        args: [
+          "--config-file", ".checkov.yaml",
+          "-d", "."
+        ]

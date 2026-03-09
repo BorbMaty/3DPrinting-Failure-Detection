@@ -1,0 +1,180 @@
+# .github/workflows/terraform.yml
+# Terraform CI/CD for PrinterMonitor
+# - PR: lint → checkov → plan (comment on PR)
+# - Merge to main: apply
+
+name: "Terraform"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform_v2/terraform/**"
+      - "terraform_v2/services/**"
+      - ".github/workflows/terraform.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "terraform_v2/terraform/**"
+      - "terraform_v2/services/**"
+      - ".github/workflows/terraform.yml"
+
+env:
+  TF_ROOT: terraform_v2/terraform
+  TF_VERSION: "1.7.0"
+  GCP_PROJECT_ID: printermonitor-488112
+  GCP_REGION: europe-west1
+
+permissions:
+  contents: read
+  pull-requests: write  # For PR comments
+
+jobs:
+  # ── Lint ──────────────────────────────────────────────────────────────
+  lint:
+    name: "Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: TFLint init
+        run: tflint --init --config ${{ github.workspace }}/.tflint.hcl
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: TFLint run
+        run: tflint --config ${{ github.workspace }}/.tflint.hcl --recursive
+        working-directory: ${{ env.TF_ROOT }}
+
+  # ── Security Scan ─────────────────────────────────────────────────────
+  checkov:
+    name: "Checkov Security Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ${{ env.TF_ROOT }}
+          framework: terraform
+          config_file: .checkov.yaml
+          quiet: true
+          soft_fail: true  # Warn but don't block
+
+  # ── Plan ──────────────────────────────────────────────────────────────
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    needs: [lint, checkov]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          echo "plan_exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TF_ROOT }}
+        continue-on-error: true
+
+      # Comment plan output on PR
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('${{ env.TF_ROOT }}/plan_output.txt', 'utf8');
+            const truncated = plan.length > 60000 ? plan.substring(0, 60000) + '\n...(truncated)' : plan;
+
+            const body = `### Terraform Plan 📋
+            \`\`\`
+            ${truncated}
+            \`\`\`
+            *Plan exit code: ${{ steps.plan.outputs.plan_exitcode }}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Plan Status
+        if: steps.plan.outputs.plan_exitcode == '1'
+        run: exit 1
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_ROOT }}/tfplan
+
+  # ── Apply (main branch only) ─────────────────────────────────────────
+  apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    needs: [plan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_ROOT }}
+
+      - name: Terraform Apply
+        run: terraform apply -input=false tfplan
+        working-directory: ${{ env.TF_ROOT }}
