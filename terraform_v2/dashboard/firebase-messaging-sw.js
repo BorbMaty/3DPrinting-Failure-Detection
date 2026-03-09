@@ -2,7 +2,7 @@ importScripts("https://www.gstatic.com/firebasejs/11.4.0/firebase-app-compat.js"
 importScripts("https://www.gstatic.com/firebasejs/11.4.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey:            "api-key",
+  apiKey:            "AIzaSyCjp-IZzt2CfXEwBxnn2icv8LxvrsJmieQ",
   authDomain:        "printermonitor-488112.firebaseapp.com",
   projectId:         "printermonitor-488112",
   storageBucket:     "printermonitor-488112.firebasestorage.app",

@@ -5,18 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3-Cam WebRTC Dashboard</title>
 
-  
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot, query, orderBy, limit }
       from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-    import { getMessaging, getToken, onMessage }
-      from "https://www.gstatic.com/firebasejs/11.4.0/firebase-messaging.js";
 
     // ── Firebase config ──────────────────────────────────────────────────────
     const firebaseConfig = {
-      apiKey:            "api key",
+      apiKey:            "AIzaSyCjp-IZzt2CfXEwBxnn2icv8LxvrsJmieQ",
       authDomain:        "printermonitor-488112.firebaseapp.com",
       projectId:         "printermonitor-488112",
       storageBucket:     "printermonitor-488112.firebasestorage.app",
@@ -25,67 +22,12 @@
       measurementId:     "G-WNNGT0SQT1",
     };
 
-    const VAPID_KEY = "BL6UdiBgKj1ln4C3zAX89KFj_ogfDaR-ul_Q0RLKM8eO2PgXegV1BgvhynJqwOy-iHMErSYgj22RNWpyT1LeMeA";
-
-    const app       = initializeApp(firebaseConfig);
-    const db        = getFirestore(app);
-    const messaging = getMessaging(app);
-
-    // ── Register service worker & request push permission ────────────────────
-    async function initPush() {
-      if (!("serviceWorker" in navigator) || !("Notification" in window)) return;
-
-      try {
-        const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          console.warn("Push permission denied");
-          updatePushStatus("blocked");
-          return;
-        }
-
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-        console.log("FCM token:", token);
-        updatePushStatus("enabled");
-
-        // Store token in window so it can be sent to backend if needed
-        window._fcmToken = token;
-      } catch (err) {
-        console.error("Push init error:", err);
-        updatePushStatus("error");
-      }
-    }
-
-    function updatePushStatus(state) {
-      const el = document.getElementById("pushStatus");
-      if (!el) return;
-      const map = {
-        enabled: { text: "🔔 Push: on",      color: "#2ecc71" },
-        blocked: { text: "🔕 Push: blocked",  color: "#e67e22" },
-        error:   { text: "⚠️ Push: error",    color: "#e74c3c" },
-        idle:    { text: "🔔 Push: off",       color: "#97a3b6" },
-      };
-      const s = map[state] ?? map.idle;
-      el.textContent  = s.text;
-      el.style.color  = s.color;
-    }
-
-    // Handle foreground messages (tab is focused)
-    onMessage(messaging, (payload) => {
-      const title = payload.notification?.title ?? "PrinterMonitor Alert";
-      const body  = payload.notification?.body  ?? "Defect detected.";
-      const type  = payload.data?.type ?? "defect";
-
-      // Dispatch to main script
-      window.dispatchEvent(new CustomEvent("fcmMessage", { detail: { title, body, type } }));
-    });
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
 
     // Expose to global scope
     window._firestoreReady = { db, collection, onSnapshot, query, orderBy, limit };
     window.dispatchEvent(new Event("firestoreReady"));
-
-    // Init push after page load
-    window.addEventListener("load", initPush);
   </script>
 
   <style>
@@ -224,7 +166,7 @@
     }
     .eventLine.budget .msg{ color:#ffe08a; }
 
-    #fsStatus, #pushStatus{
+    #fsStatus{
       font-size:11px; padding:4px 8px;
       border-radius:999px;
       background:rgba(255,255,255,.04);
@@ -257,7 +199,6 @@
     <span class="pill" id="hostPill">host: –</span>
     <span class="pill" id="hintPill">WHEP → MediaMTX</span>
     <span id="fsStatus">Firestore: connecting…</span>
-    <span id="pushStatus">🔔 Push: …</span>
     <button id="reconnectBtn">Reconnect all</button>
   </header>
 
@@ -322,8 +263,6 @@
 
   <script>
     // ── WebRTC config ────────────────────────────────────────────────────────
-    // UPDATE THIS when Cloudflare tunnel URL changes (until permanent tunnel is set up).
-    // Once you have a permanent Named Tunnel, this becomes a stable domain forever.
     const HOST = window.MEDIAMTX_HOST || "guaranteed-wallace-encourage-lady.trycloudflare.com";
     document.getElementById("hostPill").textContent = `host: ${HOST}`;
     const cams = ["cam1","cam2","cam3"];
@@ -341,17 +280,6 @@
       if (toastTimer) clearTimeout(toastTimer);
       toastTimer = setTimeout(() => { t.className = ""; }, 5000);
     }
-
-    // Handle foreground FCM messages
-    window.addEventListener("fcmMessage", (e) => {
-      const { title, body, type } = e.detail;
-      showToast(title, body, type);
-      if (type === "budget") {
-        document.body.classList.add("budget-alert");
-        setTimeout(() => document.body.classList.remove("budget-alert"), 5000);
-        addEventLine("system", title + " — " + body, new Date().toISOString(), false, true);
-      }
-    });
 
     // ── Status helpers ────────────────────────────────────────────────────────
     function setStatus(cam, ok, text) {
@@ -453,7 +381,12 @@
     let eventCount = 0;
 
     function fmtTs(isoStr) {
-      try { return new Date(isoStr).toLocaleTimeString(); } catch { return isoStr; }
+      try {
+        return new Date(isoStr).toLocaleString("en-GB", {
+          day:"2-digit", month:"short", year:"numeric",
+          hour:"2-digit", minute:"2-digit", second:"2-digit"
+        });
+      } catch { return isoStr; }
     }
 
     function addEventLine(cam, text, ts, isAlert=false, isBudget=false) {
