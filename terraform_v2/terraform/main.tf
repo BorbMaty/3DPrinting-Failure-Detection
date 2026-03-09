@@ -341,17 +341,17 @@ resource "google_billing_budget" "monthly" {
   }
 
   threshold_rules {
-    threshold_percent = 0.5   # alert at $2.50
+    threshold_percent = 0.5 # alert at $2.50
     spend_basis       = "CURRENT_SPEND"
   }
 
   threshold_rules {
-    threshold_percent = 1.0   # alert at $5.00
+    threshold_percent = 1.0 # alert at $5.00
     spend_basis       = "CURRENT_SPEND"
   }
 
   threshold_rules {
-    threshold_percent = 1.2   # alert at $6.00 (overage)
+    threshold_percent = 1.2 # alert at $6.00 (overage)
     spend_basis       = "CURRENT_SPEND"
   }
 
@@ -365,7 +365,7 @@ resource "google_billing_budget" "monthly" {
 # ── Cloud Function: Budget Notifier ───────────────────────────────────────────
 
 data "archive_file" "budget_notifier_source" {
-  type        = "zip"
+  type = "zip"
   # Both handlers (handle_detection + handle_budget_alert) live in the same
   # services/alert-manager directory. Using that as source for both functions.
   source_dir  = "${path.module}/../services/alert-manager"
@@ -495,7 +495,7 @@ resource "google_cloudfunctions2_function" "dispatcher" {
   service_config {
     service_account_email = google_service_account.dispatcher.email
     max_instance_count    = 10
-    available_memory      = "512M"   # frames are ~100-200KB base64
+    available_memory      = "512M" # frames are ~100-200KB base64
     timeout_seconds       = 60
 
     environment_variables = {
