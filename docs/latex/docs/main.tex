@@ -1,0 +1,86 @@
+\documentclass[12pt, twosides]{report}
+
+\include{preamble}
+
+\title{
+	{Szimulált robotraj vezérlése}\\
+	{\large Sapientia\\
+	Erdélyi Magyar Tudományegyetem, Marosvásárhely}
+}
+\author{
+	Patka, Zsolt-András\\
+	\texttt{patka.zsolt-andras@student.ms.sapientia.ro}
+	\and
+	Szántó, Zoltán\\
+	\texttt{zoltan.szanto@ms.sapientia.ro}	
+}
+\date{2020}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\includepdf[pages={1,2,3}]{pdfs/allamvizsga_borito.pdf}
+
+\section*{Extras}
+\input{chapters/abstractRo}
+\pagebreak
+
+\includepdf[pages={6}]{pdfs/allamvizsga_borito.pdf}
+
+\section*{Kivonat}
+\input{chapters/abstractHu}
+\pagebreak
+
+\section*{Abstract}
+\input{chapters/abstractEn}
+\pagebreak
+
+\pagenumbering{gobble}
+
+\tableofcontents
+
+\listoffigures
+
+\chapter{Bevezető}
+\pagenumbering{arabic}
+\input{chapters/introduction}
+
+\chapter{Elméleti áttekintés}
+\input{chapters/theory.tex}
+
+\chapter{Hardver- és szoftverkörnyezet}
+\input{chapters/hardver_and_softver.tex}
+
+\chapter{Adatgyűjtés és előfeldolgozás}
+\input{chapters/data_gathering_and_preparing.tex}
+
+\chapter{Mélytanulási modellek} \label{chpt:implementation}
+\input{chapters/deeplearning_models.tex}
+
+\chapter{Modell betanítása és validálása}
+\input{chapters/teaching_and_validating.tex}
+
+\chapter{Tesztelés és kiértékelés}
+\input{chapters/test_and_validate.tex}
+
+\chapter{Rendszerintegráció és alkalmazás}
+\input{chapters/system_integration_and_usage.tex}
+
+\chapter{Összefoglalás és jövőbeli irányok}
+\input{chapters/summary}
+
+\chapter{Mellékletek}
+\input{chapters/melleklete.tex}
+
+
+\addcontentsline{toc}{chapter}{Irodalomjegyzék}
+\bibliographystyle{ieeetr}
+\bibliography{References}
+
+%appendix
+\appendix
+\chapter{Függelék}
+\input{chapters/appendix}
+
+
+\end{document}
