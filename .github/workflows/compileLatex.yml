@@ -1,43 +1,37 @@
 name: Compile thesis
-
 on: [push]
-
 jobs:
   build:
-    runs-on: ubuntu-16.04
-
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install texlive extra
-      run: | 
-        sudo apt-get install texlive-latex-extra
-    - name: Install packages for babel magyar
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install LaTeX packages
       run: |
-        sudo apt-get install texlive-lang-european
-    - name: Install texlive science
-      run: |
-        sudo apt-get install texlive-science
+        sudo apt-get update
+        sudo apt-get install -y texlive-latex-extra texlive-lang-european texlive-science
+
     - name: Compile the thesis
       run: |
-        cd $GITHUB_WORKSPACE/docs
+        cd $GITHUB_WORKSPACE/docs/latex/docs
         pdflatex main.tex
         bibtex main
         pdflatex main.tex
         pdflatex main.tex
+
     - name: Compress pdf
       run: |
-        cd $GITHUB_WORKSPACE/docs
+        cd $GITHUB_WORKSPACE/docs/latex/docs
         ghostscript -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dNOPAUSE -dQUIET -dBATCH \
         -sOutputFile=Template_thesis_compressed.pdf main.pdf
-    - name: Git setup
+
+    - name: Commit and push PDF
       run: |
         git config user.email ${{ secrets.EMAIL }}
         git config user.name ${{ secrets.FULL_NAME }}
-    - name: Push the document to the repo
-      run: |
-        cd $GITHUB_WORKSPACE/docs
-        branchName=$(git branch | grep '*' | tr -d '* ')
-        git add main.pdf
-        git add Template_thesis_compressed.pdf
-        git commit -m "Github Action: Compilation successful, added updated thesis main.pdf"
-        git push origin ${branchName}
+        cd $GITHUB_WORKSPACE/docs/latex/docs
+        git add main.pdf Template_thesis_compressed.pdf
+        git diff --cached --quiet || git commit -m "ci: update compiled thesis PDF [skip ci]"
+        git push
