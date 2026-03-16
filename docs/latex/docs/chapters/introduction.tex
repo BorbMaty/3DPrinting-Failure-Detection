@@ -9,9 +9,9 @@ A projekt célja egy olyan rendszer létrehozása, mely valós időben monitoriz
 Felismeri az adott hibát, és ennek megfelelően értesíti a felhasználót a teendőkről. Ezzel jelentős, költséget,
 időt és nyersanyagot megspórolva a felhasználónak.
 
-\subsection{Iparági relevancia és anyagspórlás}
+\subsection{Iparági relevancia és nyersanyagmenedzsment}
 A 3D nyomatás a jelenben már egy igen komoly iparággá nőtte, ki magát, tekintettel lévén arra, hogy 
-Rengeteg új geometria megvalósítására nyitott kapukat, a gyártásban, és rendkívűl egyszerűvé tette a 
+Rengeteg új geometria megvalósítására nyitott kapukat, az additív gyártásban, és rendkívűl egyszerűvé tette a 
 prototípus gyártást, ezzel gyorsítva a tömeggyártáshoz való eljutást. De miért is fontos a valós idejű monitorizálás?
 Egy hobbiista, akinek egy nyomtató ül az asztalánál megengedheti magának, hogy időközönként ránézzen és közbelépjen
 amenyiben ez indokolt, viszont az iparban, ahol egy nyomtatófarmon belül akár száz nyomtató is lehet ezt már
@@ -24,7 +24,8 @@ nem engedhetjük meg magunknak, automatizálni kell.
 \end{figure}
 
 Egy ilyen farm esetén, már egy szeletelési hiba is, ha észrevétlen marad anyagi kárral, nyersanyagveszteséggel
-vagy a berendezések sérülésével járhat.
-A projekt keretein egy olyan skálázható rendszert szeretnénk megvalósítani, mely képes minden nyomtatón figyelni a darabokat, és
+vagy a berendezések sérülésével járhat. A 3D nyomtatási folyamatok egyik nagy problámája az, hogy igen csak időigényesek, és a nagyszámok törvénye alapján
+a hibák bekövetkezésének esélye is növekszik.
+A projekt keretein egy olyan skálázható rendszert szeretnénk megvalósítani, mely képes minden nyomtatón, több szögből, figyelni a darabokat, és
 hiba kategóriának megfelelően jelezni amenyiben beavatkozásra van szükség. Az alapötlet: Egy olyan konvoluciós neuron háló
-betanítása mely képes felismerni az alap hibákat, es ennek a beillesztése egy olyan keretrendszerbe, mely a nyomatott darabot több szemszögből figyeli.
+betanítása mely képes felismerni az alap hibákat, es ennek a beillesztése egy olyan keretrendszerbe, mely a tárgyasztalokat figyeli, különböző szögekből.

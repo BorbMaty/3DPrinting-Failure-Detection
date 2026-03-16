@@ -1,11 +1,18 @@
 \section{3D nyomtatásról TODO!}
-
-    A 3D nyomtatás maga egy olyan addítív gyártási folyamat mely CAD vagy digitális 3D modellt épít fel
-    különböző nyersagokat felhasználva, 3D nyomtatók segítségével. Ma a két legelterjetteb 3D nyomtató
-    típus az SLA, mely különleges erre a célra alkalmas gyanta és UV sugarak segítségével építi fel a darabot,
-    és az FDM nyomtatók melyek különböző műanyagból készült filamentet használnak nyersanyag gyanánt.
-    Mindkét típus bár teljesen más elven működik rétegenként építi fel a darabot egy előre szeletelt
-    G-kód-ot követve. A dolgozat általi megvalósítás FDM tipűsú nyomtatókkal foglalkozik.\\ 
+    Mi is az additív gyártás, tömören azon folyamatokat hívjuk így melyek során egy darabot
+    rétegről rétegre készítünk el, ellentéte a szubsztraktív gyártás, melynek során a darabot, egy szolid
+    blokkból való elvéséssel állítjuk elő.
+    A 3D nyomtatás maga egy  addítív gyártási folyamat mely CAD vagy digitális 3D modellt épít fel
+    különböző nyersagokat felhasználva, 3D nyomtatók segítségével. A folyamat maga egy 3D modellel kezdődik,
+    melyet úgynevezett szeletelő programok segítségével, akár több száz vagy ezer egymással párhuzamos szeletre osztunk.
+    A szoftver ezután a szeletelt modellt G-kóddá alakítja, mely utasítások sorozatát tartalmazza a 3D nyomtató számára.
+    A 3D nyomtató ezek alapján építi fel majd a darabot. Ma a legelterjedtebb 3D nyomtató fajták az FDM (Fused Deposition Modelling)
+    ezek a legismertebbek és a legelterjedtebbek a világon, működése a nyersanyagként használt műanyag megolvasztásán és annak vékony 
+    szállá extrúdáláson alapul. Egy kicsit komplexebb nyomtató fajta az SLA (Stereolithography) nyomtatók, ezek nyersanyagként
+    speciális gyantát használnak, melyeket precízen irányított lézersugarak segítségével szilárdítanak meg.
+    Ezen nyomtatók rendkívűli részletességre képesek, és nagyon precízek, viszont a darabokkal rengeteg utómunka van. Megemlíteném még
+    A polyjet, binder jet, és a fémnyomtatásra használt, DMLS/SLM technológiákat. A dolgozat elkészítése során FDM 
+    nyomtatókon előforduló hibákat tanulmányoztam, innentől kezdve csak velük foglalkozunk.\\ 
 
     \begin{figure}[H]
         \centering
@@ -21,14 +28,51 @@
         \end{minipage}
     \end{figure}
 
-    Mint már említettem az FDM 3D nyomtatók különböző filamenteket használnak nyersanyagként, 
-    ezekből is több fajta létezik. A legismertebb ezek közül a PLA, mellyel könnyű jól dolgozni,
-    főként prototípusok és dísztárgyak nyomtatására alkalmazzuk, mivel az anyag fő gyengesége
-    az alacsony olvadáspont (körülbelül 70 celzius fok), és az UV sugarak és a nedvesség és hamar
-    kikezdik. Ismertebb filament típusok még a PETG mely jobb mechanikai tulajdonságokkal és ellenálló
-    képességgel rendelkezik de még mindig nem az igazi, ha teljes mértékben szükség van mindennemű mechanikai
-    ellenállásra, terhelhetőségre akkor ABS-t kell nyomtatnunk, ennek nyomtatása viszont igen igényes, mivel zárt
-    teret és állandó hőmérsékletet igényel.Amennyiben pedig flexibilis tárgyakat nyomtatnánk a TPU a mi megoldásunk.
+    \subsection{Nyersanyagok}
+
+        Az FDM nyomtatók nyersanyaga a filament, de felhasználási módtól függetlenül, több anyagot különböztetünk meg.
+        Mindegyik anyagnak megvannak a maga tulajdonságai amik alapján kiválaszthatjuk a számunkra megfelelőt.\\
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.6\textwidth]{figures/images/literature/6basicchart.jpg}
+            \caption{Döntési szempontok}
+        \end{figure}
+
+        \subsubsection{PLA-Polylactic acid}
+
+        A PLA legelterjedtebb filament a 3D nyomtatással foglalkozók körében. Ezen nyersanyag az egyik legkörnyezetbarátabb, hiszen
+        megújuló, leggyakrabban kukorica keményítőből, cukornádból, tápiókából vagy más szénhidrátokban gazdag
+        növényből állítják elő. Viszont nagyon fontos megjegyezni, hogy a közhiedelemmel ellentétben újrahasznosítása nem olyan egyszerű,
+        csakis ipari körülmények között valósítható meg mivel magas hőt, páratartalmat és mikrobiológiai aktivítást igényel, ha 
+        ezen körülmények nem teljesülnek úgyanolyan káros mint bármilyen más műanyag a szeméthegyeken.
+        PLA-val nyomtatni nem okoz nagy fejtörést, olvadáspontja alacsonyabb, mint más filamenteknek, mechanikai ereje a közepes kategóriába sorolható
+        rugalmassága alacsony, színe a gyártási folyamatnak köszönhetően bármilyen lehet. Gyenge pontjai, a magas hőmérséklet és páratartalom és az UV sugárzásnak való kitettség.\\
+
+        \subsubsection{ABS-Acrylonitrile butadiene styrene}
+        Az ABS már a hobbiisták körében nem annyira elterjedt nyersanyag, mivel nyomtatása során, mérgező gázok keletkezhetnek,
+        az ezek által okozott kár viszont megfelelő szellőztetéssel teljes mértékben elkerülhető. Az iparban nagyon szívesen nyomtatnak vele, hiszen
+        az anyag tulajdonságai, mérsékelten jobbak mint a PLA-é, bár nyomtatása már nem olyan egyszerű, mert az anyag nagyon hajlamos a torzulása, ha ingadozik a hő a 
+        nyomtatótérben. Mechanikai keménysége magas és rugalmassága is jobb mint a pla-é. Az ABS-ből készült darabok időtállóak, nem kezdi ki őket 
+        sem a nedvesség, mintsem az uv sugárzás. Érdekesség képben kiemelném, hogy a legó kockák nagyrésze szintén ABS-ből készült.
+
+        \subsubsection{PETG-Polyethylene Terephthalate Glycol}
+        A PETG filament nagyszerű módon ötvözi az erőt flexibilitást, és a felhasználó barátságot, mondhatni ő az aranyközépút.
+        Az anyag a műanyagüvegekhez is használt PET kis glycollal megfűszerezve, mely hatására kevésbé lesz törékeny és a minősége is javul.
+        Mechanikai ereje igen magas és rugalmassága szintén közepes szintre sorolható. Az anyag rendkivűl ellenálló a nedvességgel szemben és
+        kevésbé hajlamos a torzulásra. Szárítására különösen oda kell figyelni.\\
+
+        \subsubsection{TPU-Thermoplastic Polyurethane}
+        
+        A TPU egy rendkivűl rugalmas, gumiszerű nyersanyag, mely a nyúlánkságáról keménységéről és becsapódás ellenálló képességőről híresült el.
+        A szilárd filamentekkel szemben a TPU, hajlítható, nyújtható, összenyomható, és képess ütések elnyelésére. Mechanikai keménysége kicsit kisebb, viszont ezzel
+        ellenben rugalmassága rendkívűl magas. Tökéletes olyan darabok nyomtatására melyek folyamatos használat alatt állnak majd, például szíjak, abroncsok és társaik.
+        Az anyag hajlamos a szálazásra, nyúlánksága miatt, így sokkal lassabban kell nyomtatni mint a szilárd társait, a nyomatót nagyon gyakran hozzá kell majd kalibrálni.\\
+
+        \subsubsection{Nylon-Polyamide}
+
+        A Nylon, mint nyersanyag főként iparban használatos, nagyszerű ereje és tartóssága miatt gyakran a biztos választás.
+        \\
 
 
     \begin{figure}[H]
@@ -50,10 +94,11 @@
                     \caption{Szálazás a nyomtatás végén}
                 \end{figure}
 
-            Ez a hiba igen idegesítő tud lenni, mivel rengeteg utómunkát igényel a vékony szálacskák
-            eltávolítása, és még úgyis megmarad a nyoma. Több előokozó tényező is lehet. Szeletelés
-            során nem megfelelő visszahúzás beállítási érték, nedves filament, túl nagy fúvóka hőmérséklet 
-            vagy mocskos fúvóka.
+                Ezen hiba fő jellegzetessége apró szinte áttetsző szálak megjelenése a darab élei között, ennek oka hogy
+                a fúvóka utazás közben olvadt műanyagot húz a levegőben amíg A pontból B pontba ér.
+                Legfőbb oka általában
+                nem megfelelően kiszárított filament használata a nyomtatáshoz. Ezen szálak utómunkával eltávollíthatóak, de nem garantált, hogy nyomuk
+                teljesen eltávollítható. A hibát még okozhatja, nem megfelelő visszahúzás érték, túl forró fúvóka, és mocskos fúvóka is.
 
 
             \subsubsection{Warping- Avagy eltorzulás}
