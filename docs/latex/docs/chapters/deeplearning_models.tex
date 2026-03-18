@@ -119,13 +119,29 @@
     
     Az obiektumokat leíró értéket lebegőpontos ábrázolás módban vannak, kifejezve, egyenként a képpel arányosan 0-1 közötti értékekre 
     normalizálva. Az annotáláshoz CVAT szoftvert használtam.
-    
-    
-    \subsection{A modell által nyújtott előnyök a projekt megvalósításához}
-    
-    \begin{itemize}
-        \item Valós idejű hibadetektálás, videó bemeneten
-        \item A tanítás folyamata nem bonyolult többszörösen megismételhető, amennyiben ezt a helyzet megkívánja.
-        \item A pontosság, nem sínyli meg a felhasznált modell méretét, a kis méretű modellek is képesek magas pontosságot produkálni.
-        \item Támogatott integráció konténerizációs környezetbe (docker).
-    \end{itemize}
+        
+    \begin{table}[h!]
+    \centering
+    \caption{YOLOv8 előnyei és hátrányai a projekt szempontjából}
+    \label{tab:yolo_elonyok_hatranyok}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabular}{|p{0.45\textwidth}|p{0.45\textwidth}|}
+        \hline
+        \textbf{Előnyök} & \textbf{Hátrányok} \\
+        \hline
+        Valós idejű objektumdetektálás & Nagy modellek (pl. YOLOv8x) jelentős GPU erőforrást igényelnek \\
+        \hline
+        Egyszerű és megismételhető tanítási folyamat & Kis adathalmazon hajlamos túltanulásra \\
+        \hline
+        Kis modellek is magas pontosságot érnek el & Zsúfolt vagy részben takart objektumok detektálása nehézkes \\
+        \hline
+        Docker konténerizációs támogatás & Valós idejű feldolgozás hálózati késleltetéstől függhet \\
+        \hline
+        Aktív közösség és folyamatos fejlesztés & Egyedi osztályokhoz saját adathalmaz gyűjtése szükséges \\
+        \hline
+    \end{tabular}
+    \end{table}
+
+
+
+
