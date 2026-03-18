@@ -319,43 +319,9 @@ resource "google_pubsub_subscription" "budget_notifications_sub" {
 # IAM for billing budget publisher granted manually
 
 # ── Billing Budget ─────────────────────────────────────────────────────────────
-
-resource "google_billing_budget" "monthly" {
-  billing_account = var.billing_account
-  display_name    = "PrinterMonitor $5 Alert"
-
-  budget_filter {
-    projects = ["projects/${data.google_project.project.number}"]
-  }
-
-  amount {
-    specified_amount {
-      currency_code = "USD"
-      units         = "5"
-    }
-  }
-
-  threshold_rules {
-    threshold_percent = 0.5 # alert at $2.50
-    spend_basis       = "CURRENT_SPEND"
-  }
-
-  threshold_rules {
-    threshold_percent = 1.0 # alert at $5.00
-    spend_basis       = "CURRENT_SPEND"
-  }
-
-  threshold_rules {
-    threshold_percent = 1.2 # alert at $6.00 (overage)
-    spend_basis       = "CURRENT_SPEND"
-  }
-
-  all_updates_rule {
-    pubsub_topic                     = google_pubsub_topic.budget_notifications.id
-    schema_version                   = "1.0"
-    monitoring_notification_channels = []
-  }
-}
+# Managed manually via GCP Console — CI service account lacks
+# billingAccounts.budgets permissions. Budget ID: 695e9489-62cb-4e37-82cc-2d0e1ed4c8e0
+# To bring back under Terraform, grant roles/billing.costsManager to the CI SA.
 
 # ── Cloud Function: Budget Notifier ───────────────────────────────────────────
 
