@@ -432,6 +432,14 @@ resource "google_pubsub_topic_iam_member" "dispatcher_detections_publisher" {
   member  = "serviceAccount:${google_service_account.dispatcher.email}"
 }
 
+# Vertex AI prediction container (judge) → publish detections-out
+resource "google_pubsub_topic_iam_member" "vertex_ai_detections_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.detections.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
+}
+
 # ── Source bundle ─────────────────────────────────────────────────────────────
 
 data "archive_file" "dispatcher_source" {
