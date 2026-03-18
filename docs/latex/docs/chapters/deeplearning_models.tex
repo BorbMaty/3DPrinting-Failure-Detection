@@ -1,3 +1,131 @@
-\section{TODO}
+    \section{Piackutatás és a megfelelő Ai modell kiválasztása}
 
+        \subsection{Lehetséges eszközök}
 
+        Képfelismerésre, több ai keretrendszer felhasználható, már nem kell abban gondolkozni, hogyha megszeretnénk valósítani valamit akkor fel kell építenünk
+        egy egész neuron hálót a semmiből, viszont fontos, hogy olyat válasszunk mely számunkra a legmefelelőbb a cél megvalósításhoz. Amikor a projekt körvonalazódott
+        a fejemben, az ultralytics yolov5 gondolata jelent meg mivel már dolgoztam vele, az egyetemi Mesterséges Intelligencia tantárgy során tudom, mire képes.
+        De azért további utána olvasás során rá kellett jönnöm, hogy nem feltétlen ez a legjárhatóbb út, vannak jobb megoldások. Egy nagyon fontos szempont volt
+        a választásban, hogy a tanított modell könnyen integrálható legyen egy olyan pipeline-ba mely nagyban kapaszkodik a Jupyter Notebook, majd később a Google Cloud által kínált erőforrásokba,
+        ezzel megkerülve a tanítás és futtatás során felmerülő hardverbéli megszorításokat.
+
+        \subsubsection{Faster R-CNN}
+        A Faster R-CNN, azaz régió alapú konvolúciós neuron háló, úgynevezett kétfázisú obiektum észlelő neurális háló. Megjelenése 2015-re
+        vezethető vissza a Microsoft Research kutatói rukkoltak elő vele. Működési elve röviden három lépésre bontható. Először végbemegy 
+        a jellemző kivonás, mely során egy előre betanított konvoluciós háló vizuális jellemzőtérképet készít a bebementi képből. Ezt követi a 
+        Region Proposal network felépítése, ezen folyamat során generálódnak ki a lehetségers jelöltek, jelentősen gyorsabb mint a manuális régió 
+        kereső algoritmusok.A harmadik egyben utolsó lépcsőfok a Rol pooling és az osztályozás, ebben a jellemző térképből kivágódnak a javasolt régiók, 
+        majd egységes méretre skálázás történik, ez a Rol pooling. Végezetül egy másodlagos hálózat minden régiót egyenként kiértékel, és megmutatja melyik 
+        régió melyik obiektumhoz társul majd egyben pontosítja a határoló doboz koordinátáit.
+        A Faster R-CNN modell előnyei, a magas pontosság, melyet a kétfázisu feldolgozásnak köszönhet. Az előre betanított konvulicós háló nagyon rugalmas, 
+        és könnyen összehangolható más konvoluciós neuron hálókkal, ezáltal a háló teljesítménye skálázható.
+        Hátrányai miatt számunkra rossz alternatívává válik, hiszen lassú interferenciája miatt, nem képes valósidejű alkalmazások megvalósítására. A modell 
+        mérete is szintén elég nagy mely erős hardverigényt jelent. Integrálása a Jupyter Notebook-ba is sokkal elvontabb mint például a Yolo család tagjaié.
+
+        \subsubsection{Yolov5}
+        A Yolov5 avagy You Only Look Once 5ös verziója, egy egyfázisű objektumdetekciós neurális hálózat. 2020-ban adta ki az Ultralytics nevű cég. 
+        Eléggé széleskörben elterjedt az iparban mivel, nagyon könnyen használható, és tanítható, és nagyon könnyen integrálható. A Yolo Architektúra is h
+        árom részből épül fel. Az első a Gerinc mely a képből kinyeri a vizuális jellemzőket, majd a Yolov5 a Cross Stage partial Darknet elvégzi a számításokat. 
+        Ez a réteg felel az összes vizuális mintázat felismeréséért, melyből később majd a háló tanulni fog. Az architecktúra 
+        második része a nyak, mely először összevonja a különböző méretű jellemzőket, biztosítva hogy a modell több méretű obiektum felismerésére
+        is képes legyen. A harmadik rész a fej, ezen rétegben történik a felismerés, ez egy horgony alapű réteg, a háló előredefiniált méretű dobozat
+        próbál végig. Maga a kimenet három méretben jön létre.
+        Előnyei közül kiemelendő, hogy kis interferencia ideje van, ezáltal tökéletes a valós idejű felismerésre modellmérettől függően. 
+        Nagyon könnyen tanítható és integrálható, szinte out of the box használható. Jól dokumentált és rengeteg segédanyag található az interneten, 
+        és a Hyperparaméterek augmentációk és a veszteség függvények is előre bevannak már állítva. A yolov5 egy jó kandidátus a projektünk szempontjából, 
+        de újabb variánsa a Yolov8 még az ő hiányosságain is felülkerekedik, mivel a teljes Architektúrát újragondolták,ő jobb pontosságot és sebességet kínál, 
+        és a detekció sem horgony alapű már.
+
+    \section{A projekt megvalósításához használandó AI modell- YOLOv8}
+    
+    \subsection{Bevezetés}
+        A YOLOv8 (\textit{You Only Look Once},8-as verziója)-at az ultralytics cég adta ki 2023-ban. Egy olyan modell, mely rendkívűl hasznos a valósidejű 
+        obiektumdetektációban, emiatt is esett rá a választás, minden karakterisztikája megfelelő, ha 3D nyomtatási folyamatot szeretnék felügyelni, és az 
+        esetlegesen felmerülő hibákat észrevenni esetleg közbelépni. De mégis mi mi teszi a YOLOv8-at az általunk felhasznált csodafegyverré?
+    
+    
+    \subsection{Főbb karakterisztikák}
+    \begin{itemize}
+        \item Az ulralytics teljesen újragondolta a modell architektúráját, a Pytorch helyett teljesen saját architektúrára való áttérés történt, 
+        ez pedig visszafele inkompatibilitást jelent a YOLOv5 irányába.
+        \item Támogat obiektum detekciót, szegmentálást, pozíció becslést, obiektum osztályozást és követést.
+        \item A tanítás és a futtatás is egyaránt API-n és CLI-n keresztül történik, nincs szükség scriptekre.
+        \item Exportálási lehetőségek olyan formátumokba mint az ONNX, CoreML és TensorRT
+        \item Könnyen tanítható saját adathalmazokkal is.
+    \end{itemize}
+    
+    Ezekből is látszik, hogy miért esett ezen modelre a választás. Az adathalmaz elkészült, a cimkézés megtörtént, a következő lépés egyértelműen 
+    a tanítás lesz.
+    
+    
+    \subsection{Modell variánsok}
+    Felhasználási célok és hardverigény szerint a YOLOv8 több méretben elérhető, hogy több felhasználást legyen képes kiszolgálni.
+    
+    \begin{itemize}
+        \item \texttt{yolov8n} – Nano- a legkisebb modell, nagyon gyors és alacsony hardverigényű
+        \item \texttt{yolov8s} – Small
+        \item \texttt{yolov8m} – Medium
+        \item \texttt{yolov8l} – Large
+        \item \texttt{yolov8x} – Extra large- Legnagyobb elérhető pontosság, viszont a legnagyobb hardverigényű is.
+    \end{itemize}
+    
+    
+    \subsection{Telepítési útmutató és alapszíntű felhasználás}
+    
+    Telepítés:
+    \begin{verbatim}
+    pip install ultralytics
+    \end{verbatim}
+    
+    Alap példa képfeldolgozásra:
+    \begin{verbatim}
+    from ultralytics import YOLO
+    model = YOLO("yolov8n.pt")
+    results = model("mütyür.jpg")
+    results.show()
+    \end{verbatim}
+    
+    Mi a felhasználáshoz, azt szeretnénk, hogy egy python scripten keresztül a modell, valósidejű kameraképen fusson és deketáljon hibákat.
+    
+    \subsection{Saját dataset felhasználása tanításhoz}
+    
+    Mint már említettem a modell tanítható saját adathalmaz segítségével is, amennyiben az megfelelően fel lett címkézve és az exportált annotációk 
+    formátuma is Yolo kompatibilis. Ahhoz, hogy ez lehetséges legyen egy \texttt{data.yaml} fájlra lesz szükségünk, mely minden fontos információt tartalmaz.
+    Tanítási és Validációs adathalmazok helye, osztályok számossága és elnevezése.
+    
+    \begin{lstlisting}
+    train: images/train
+    val: images/val
+    nc: 9
+    names: ['stringing', 'warping', 'layer_shift', 'under_extrusion',
+            'over_extrusion', 'nozzle_clog', 'foreign_object_on_print_area',
+            'not_sticking', 'spagetti']
+    \end{lstlisting}
+    
+    Tanítási folyamat elstartolása parancssoron keresztül:
+    
+    \begin{verbatim}
+    yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=50 imgsz=640
+    \end{verbatim}
+    
+    \subsection{Annotáció formátuma}
+    
+    YOLO-formátumban minden kép mellé tartozik egy azonos nevű .txt file melynek tartalma a következőképpen 
+    néz ki, minden sor egy obiektum, egy .txt file pedig több obiektumot is tartalmazhat:
+    
+    \begin{verbatim}
+    <class_id> <x_center> <y_center> <width> <height>
+    \end{verbatim}
+    
+    Az obiektumokat leíró értéket lebegőpontos ábrázolás módban vannak, kifejezve, egyenként a képpel arányosan 0-1 közötti értékekre 
+    normalizálva. Az annotáláshoz CVAT szoftvert használtam.
+    
+    
+    \subsection{A modell által nyújtott előnyök a projekt megvalósításához}
+    
+    \begin{itemize}
+        \item Valós idejű hibadetektálás, videó bemeneten
+        \item A tanítás folyamata nem bonyolult többszörösen megismételhető, amennyiben ezt a helyzet megkívánja.
+        \item A pontosság, nem sínyli meg a felhasznált modell méretét, a kis méretű modellek is képesek magas pontosságot produkálni.
+        \item Támogatott integráció konténerizációs környezetbe (docker).
+    \end{itemize}
