@@ -42,6 +42,7 @@ provider "google-beta" {
 
 resource "google_project_service" "apis" {
   for_each = toset([
+    "run.googleapis.com",
     "pubsub.googleapis.com",
     "firestore.googleapis.com",
     "aiplatform.googleapis.com",
@@ -70,6 +71,7 @@ resource "google_storage_bucket" "models" {
   name                        = var.model_gcs_bucket
   location                    = var.region
   uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
   force_destroy               = false
 
   versioning {
@@ -82,7 +84,9 @@ resource "google_storage_bucket" "models" {
 
 # ── Artifact Registry ─────────────────────────────────────────────────────────
 
+#checkov:skip=CKV_GCP_84:CMEK not required for thesis project
 resource "google_artifact_registry_repository" "printermonitor" {
+  #checkov:skip=CKV_GCP_84:CMEK not required for thesis project
   repository_id = "printermonitor"
   format        = "DOCKER"
   location      = var.region
@@ -93,7 +97,9 @@ resource "google_artifact_registry_repository" "printermonitor" {
 
 # ── Pub/Sub ───────────────────────────────────────────────────────────────────
 
+#checkov:skip=CKV_GCP_83:CMEK not required for thesis project — Google-managed encryption is sufficient
 resource "google_pubsub_topic" "frames" {
+  #checkov:skip=CKV_GCP_83:CMEK not required for thesis project
   name    = "frames-in"
   project = var.project_id
 
@@ -102,7 +108,9 @@ resource "google_pubsub_topic" "frames" {
   depends_on = [google_project_service.apis]
 }
 
+#checkov:skip=CKV_GCP_83:CMEK not required for thesis project
 resource "google_pubsub_topic" "detections" {
+  #checkov:skip=CKV_GCP_83:CMEK not required for thesis project
   name    = "detections-out"
   project = var.project_id
 
@@ -111,12 +119,7 @@ resource "google_pubsub_topic" "detections" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_pubsub_topic" "frames_dead_letter" {
-  name    = "frames-in-dead-letter"
-  project = var.project_id
 
-  depends_on = [google_project_service.apis]
-}
 
 
 
@@ -163,11 +166,6 @@ resource "google_service_account" "frame_extractor" {
   display_name = "Frame Extractor Service (runs on Pi)"
 }
 
-resource "google_service_account" "judge" {
-  account_id   = "sa-judge"
-  display_name = "Judge Service (Vertex AI)"
-}
-
 resource "google_service_account" "alert_manager" {
   account_id   = "sa-alert-manager"
   display_name = "AlertManager Cloud Function"
@@ -182,19 +180,6 @@ resource "google_pubsub_topic_iam_member" "frame_extractor_publisher" {
   member  = "serviceAccount:${google_service_account.frame_extractor.email}"
 }
 
-resource "google_pubsub_topic_iam_member" "judge_publisher" {
-  project = var.project_id
-  topic   = google_pubsub_topic.detections.name
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_service_account.judge.email}"
-}
-
-resource "google_storage_bucket_iam_member" "judge_model_reader" {
-  bucket = google_storage_bucket.models.name
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.judge.email}"
-}
-
 resource "google_project_iam_member" "alert_manager_firestore" {
   project = var.project_id
   role    = "roles/datastore.user"
@@ -204,7 +189,7 @@ resource "google_project_iam_member" "alert_manager_firestore" {
 # Required for firebase_admin.messaging.send() to authenticate with FCM
 resource "google_project_iam_member" "alert_manager_firebase_admin" {
   project = var.project_id
-  role    = "roles/firebase.sdkAdminServiceAgent"
+  role    = "roles/firebase.admin"
   member  = "serviceAccount:${google_service_account.alert_manager.email}"
 }
 
@@ -225,18 +210,20 @@ data "google_project" "project" {
   project_id = var.project_id
 }
 
+#checkov:skip=CKV_GCP_41:Required for Pub/Sub to authenticate Eventarc triggers to Cloud Run
+#checkov:skip=CKV_GCP_49:Required for Pub/Sub to authenticate Eventarc triggers to Cloud Run
 resource "google_project_iam_member" "pubsub_sa_token_creator" {
+  #checkov:skip=CKV_GCP_41:Required for Pub/Sub Eventarc auth
+  #checkov:skip=CKV_GCP_49:Required for Pub/Sub Eventarc auth
   project = var.project_id
   role    = "roles/iam.serviceAccountTokenCreator"
   member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 # ── Vertex AI ─────────────────────────────────────────────────────────────────
-# Endpoint deployed manually:
-#   Endpoint ID : 9105488997194399744
-#   Model ID    : 7050633706276388864
-#   Machine type: n1-standard-4
-# Managed outside Terraform to avoid accidental destruction.
+# Endpoint deployed manually and managed outside Terraform.
+# Set var.vertex_endpoint_id after deploying:
+#   gcloud ai endpoints list --region=europe-west1 --project=printermonitor-488112
 
 # ── Cloud Function: AlertManager ─────────────────────────────────────────────
 
@@ -244,6 +231,7 @@ resource "google_storage_bucket" "functions_source" {
   name                        = "${var.project_id}-functions-source"
   location                    = var.region
   uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
   force_destroy               = true
 
   depends_on = [google_project_service.apis]
@@ -282,6 +270,7 @@ resource "google_cloudfunctions2_function" "alert_manager" {
     max_instance_count    = 10
     available_memory      = "256M"
     timeout_seconds       = 120
+    ingress_settings      = "ALLOW_INTERNAL_ONLY"
 
     environment_variables = {
       GCP_PROJECT          = var.project_id
@@ -310,7 +299,9 @@ resource "google_cloudfunctions2_function" "alert_manager" {
 
 # ── Pub/Sub: Budget notifications ─────────────────────────────────────────────
 
+#checkov:skip=CKV_GCP_83:CMEK not required for thesis project
 resource "google_pubsub_topic" "budget_notifications" {
+  #checkov:skip=CKV_GCP_83:CMEK not required for thesis project
   name    = "budget-notifications"
   project = var.project_id
 
@@ -330,11 +321,11 @@ resource "google_pubsub_subscription" "budget_notifications_sub" {
 # ── Billing Budget ─────────────────────────────────────────────────────────────
 
 resource "google_billing_budget" "monthly" {
-  billing_account = "0124C1-D405D9-F46DB8"
+  billing_account = var.billing_account
   display_name    = "PrinterMonitor $5 Alert"
 
   budget_filter {
-    projects = ["projects/895714392909"]
+    projects = ["projects/${data.google_project.project.number}"]
   }
 
   amount {
@@ -403,6 +394,7 @@ resource "google_cloudfunctions2_function" "budget_notifier" {
     max_instance_count    = 3
     available_memory      = "256M"
     timeout_seconds       = 60
+    ingress_settings      = "ALLOW_INTERNAL_ONLY"
 
     environment_variables = {
       GCP_PROJECT        = var.project_id
@@ -466,6 +458,14 @@ resource "google_project_iam_member" "dispatcher_pubsub_subscriber" {
   member  = "serviceAccount:${google_service_account.dispatcher.email}"
 }
 
+# Dispatcher → publish detections-out (results from Vertex AI)
+resource "google_pubsub_topic_iam_member" "dispatcher_detections_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.detections.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_service_account.dispatcher.email}"
+}
+
 # ── Source bundle ─────────────────────────────────────────────────────────────
 
 data "archive_file" "dispatcher_source" {
@@ -503,6 +503,7 @@ resource "google_cloudfunctions2_function" "dispatcher" {
     max_instance_count    = 10
     available_memory      = "512M" # frames are ~100-200KB base64
     timeout_seconds       = 60
+    ingress_settings      = "ALLOW_INTERNAL_ONLY"
 
     environment_variables = {
       GCP_PROJECT        = var.project_id

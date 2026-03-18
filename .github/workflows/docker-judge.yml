@@ -13,6 +13,10 @@ on:
     paths:
       - "terraform_v2/services/judge/**"
       - ".github/workflows/docker-judge.yml"
+
+permissions:
+  contents: read
+
 env:
   GCP_PROJECT_ID: printermonitor-488112
   GCP_REGION: europe-west1
@@ -22,8 +26,6 @@ jobs:
   build:
     name: "Build & Push"
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Authenticate to GCP
@@ -36,12 +38,10 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-      # ↓ ADD THIS STEP ↓
       - name: Download model from GCS
         run: |
           gsutil cp gs://printermonitor-488112-models/yolov8x/best.pt \
             terraform_v2/services/judge/best.pt
-      # ↑ ADD THIS STEP ↑
       - name: Build image
         run: |
           docker build \

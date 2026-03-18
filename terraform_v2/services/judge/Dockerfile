@@ -16,4 +16,10 @@ COPY main.py .
 # For Vertex AI we bake it in at build time
 COPY best.pt /app/best.pt
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')" || exit 1
+
+RUN useradd -r -u 1001 appuser
+USER appuser
+
 CMD ["python", "main.py"]

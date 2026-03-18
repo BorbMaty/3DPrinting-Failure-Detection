@@ -1,11 +1,11 @@
 output "mediamtx_whep_url" {
   description = "WebRTC WHEP URL (Cloudflare tunnel on Pi)"
-  value       = "https://<cloudflare-tunnel-url>/whep"
+  value       = "https://${local.mediamtx_host}/whep"
 }
 
 output "vertex_endpoint_id" {
   description = "Vertex AI Endpoint ID for the Judge Service"
-  value       = "9105488997194399744"
+  value       = var.vertex_endpoint_id
 }
 
 output "frames_topic" {

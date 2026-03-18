@@ -46,3 +46,9 @@ variable "gmail_app_password" {
   type        = string
   sensitive   = true
 }
+
+variable "billing_account" {
+  description = "GCP billing account ID"
+  type        = string
+  default     = "0124C1-D405D9-F46DB8"
+}
