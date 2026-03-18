@@ -91,22 +91,24 @@
     
     Mint már említettem a modell tanítható saját adathalmaz segítségével is, amennyiben az megfelelően fel lett címkézve és az exportált annotációk 
     formátuma is Yolo kompatibilis. Ahhoz, hogy ez lehetséges legyen egy \texttt{data.yaml} fájlra lesz szükségünk, mely minden fontos információt tartalmaz.
-    Tanítási és Validációs adathalmazok helye, osztályok számossága és elnevezése.
+    Tanítási és Validációs adathalmazok helye, osztályok számossága és elnevezése.\\
     
-    \begin{lstlisting}
+    A \texttt{data.yaml} konfigurációs fájl tartalmazza az adathalmaz elérési útjait és az osztálycímkéket:
+
+    \begin{lstlisting}[language=yaml]
     train: images/train
     val: images/val
-    nc: 9
+    nc: 8
     names: ['stringing', 'warping', 'layer_shift', 'under_extrusion',
             'over_extrusion', 'nozzle_clog', 'foreign_object_on_print_area',
             'not_sticking', 'spagetti']
     \end{lstlisting}
-    
-    Tanítási folyamat elstartolása parancssoron keresztül:
-    
-    \begin{verbatim}
-    yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=50 imgsz=640
-    \end{verbatim}
+
+        Tanítási folyamat elindítása parancssoron keresztül:
+
+        \begin{lstlisting}[language=bash]
+        yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=50 imgsz=640
+        \end{lstlisting}
     
     \subsection{Annotáció formátuma}
     
@@ -120,7 +122,7 @@
     Az obiektumokat leíró értéket lebegőpontos ábrázolás módban vannak, kifejezve, egyenként a képpel arányosan 0-1 közötti értékekre 
     normalizálva. Az annotáláshoz CVAT szoftvert használtam.
         
-    \begin{table}[h!]
+    \begin{table}[H]
     \centering
     \caption{YOLOv8 előnyei és hátrányai a projekt szempontjából}
     \label{tab:yolo_elonyok_hatranyok}
@@ -142,6 +144,10 @@
     \end{tabular}
     \end{table}
 
-
+    \subsection{Célkítűzés}
+    Mivel a keretrendszer és az erőforrások is adottak voltak, így a választás a yolov8x alapmodelre esett, a célkítűzés tiszta, 
+    egy olyan modelt betanítani mely képes élő kamera bemeneten felismerni a 9 hiba bármelyikét, és annak egy olyan keretrendszerbe illesztése,
+    mely ezt elegáns módon lehetővé teszi.
+    
 
 
