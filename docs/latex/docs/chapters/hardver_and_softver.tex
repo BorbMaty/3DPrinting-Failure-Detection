@@ -1,6 +1,83 @@
 \section{A teljes rendszer}
 
+Grafikon <3 és magyarázat
+
+\subsection{Kamera Agent- Rasberry pi}
+    Kicsi információ magáról a pi-ről majd\dots
+    A kamera képek előállításért felelő kamera Agent szerepét egy rasberry pi 4b 8gb tölti be,
+    3 darab rácsatolt webkamerával kiegészítve. (kép)
 
 
-\subsection{Alcím 1}
+    \section{Szolgáltatások a PI-n}
+    A pi-n három szolgáltatás fut, melyek az indítás után azonnal elindulnak systemd szolgáltatásként.
+    Ezek nélkül a rendszer nem valósulhatna meg.
 
+        \subsection{MediaMTX}
+        Ezen szolgáltatás révén valósul meg a kamera streamek eljutását a dashboardhoz, úgy hogy a 
+        H264-es kódolású videót RTSP-vé konvertálja. A stream a dashboardhoz egy Cloudfare alagúton keresztül jut majd el.
+        (Grafikon, config file, stb)
+
+        \subsection{frame\_extractor.py}
+        Ezen python script szerepe, a három RTSP streamből a képkockák kinyerése és azok publikálása a Pub/Sub csatornára a vertex Ai végpont számára.
+        Ehhez szüksége van egy service account kulcsra, mely az "sa-frame-extractor" névre hallgat, és a pi-n található.
+        (Konfigurációs táblázat)
+
+        \subsection{Cloudfare alagút}
+        Ezen szolgáltatás segítségével, megkerülhetőek a makacs tűzfal okozta problémák, és a videó akadályok nélkül eljut a dashboard-ra.
+        Jelenleg ideiglenes alagútakat használunk mivel ezek ingyenesek, ezek használata viszont gyakori szétkapcsolásokkal jár, és minden újraindítás során,
+        változnak.
+
+    \section{Cloud Stack}
+    A rendszer lelke teljes valójában a google cloudban található, mely igen széleskörű eszköztárat biztosított számomra a projekt megvalósításához.
+    További infók
+
+        \subsection{Google Cloud Projekt - GCP}
+
+        \subsection{Vertex AI végpont}
+
+        \subsection{Service Accounts}
+        A szervíz felhasználók, olyan egyedi emailcímmel rendelkező entitások, melyek segítségével, különböző applikációk, virtuális gépek, vagy egyéb megvalósítások
+        kommunikálhatnak a Google Api-val, emberi felhasználók helyett, ezzel biztonságos összeköttetést biztosítva a különböző erőforrások között.
+
+            \subsubsection{sa-frame-extractor}
+            A pi-n fut szerepe, hogy a kinyert képkockák publikálva legyenek a pub/sub csatornára. Jogosultágai, hogy publikál a frames-in csatornára,
+            és aiplatform felhasználó
+
+            \subsubsection{sa-dispatcher}
+            Az ő szerepete hogy leossza a streameket, és meghívja a VertexAi endpointot. Jogosultágai, hogy aiplatform felhasználó, pub/sub feliratkozó a detections-out csatornán, és 
+            aktiválhatja az Alert-managert szügség esetén
+
+            \subsubsection{sa-alert-manager}
+            A figyelmeztetés kezelésért felelő, egyaránt az anomáliák észlelésekor, és a költségvetés meghaladásakor. Jogusultságai, hogy
+            datastore felhasználó, firebase admin, esemény TODO           
+
+
+
+        \subsection{Pub\Sub Topics}
+            táblázat <3
+
+        \subsection{Google Cloud Függvények}
+
+            \subsubsection{Dispatcher}
+
+            \subsubsection{Alert-Manager}
+
+            \subsubsection{Budger Notifier}
+
+            \subsubsection{Firestore Collections}
+
+        \subsection{Composite index}
+
+        \subsection{Konténer képek}
+
+    \section{Dashboard}  
+    
+    \section{Github Action Workflows}
+    
+        \subsection{terraform.yml}
+
+            \subsubsection{Checkov}
+
+            \subsubsection{Lint}
+
+        \subsection{docker-judge.yml}
