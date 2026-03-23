@@ -1,11 +1,18 @@
 \section{A teljes rendszer}
 
-Grafikon  és magyarázat
+                \begin{figure}[H]
+                    \centering
+                    {\includegraphics[width=0.6\textwidth]{figures/images/literature/systemarch.jpg}}
+                    \caption{A rendszer}
+                \end{figure}
 
-\subsection{Kamera Agent- Rasberry pi}
-    Kicsi információ magáról a pi-ről majd\dots
+
+\subsection{Kamera Agent-Rasberry pi}
     A kamera képek előállításért felelő kamera Agent szerepét egy rasberry pi 4b 8gb tölti be,
-    3 darab rácsatolt webkamerával kiegészítve. (kép)
+    3 darab rácsatolt webkamerával kiegészítve. A rasberry pi mint edge eszköz egy elég verszatilis fegyver a kezünkben.
+    Keveset is fogyaszt, megfelelő számú usb porttal is rendelkezik, és az erőforrások is megfelelőek számunkra.
+    A rasberry Os, pedig tökéletes a szükséges docker konténerek és python scriptek futtatására.
+    
 
 
     \section{Szolgáltatások a PI-n}
@@ -13,6 +20,7 @@ Grafikon  és magyarázat
     Ezek nélkül a rendszer nem valósulhatna meg.
 
         \subsection{MediaMTX}
+        TODO: még beszélni a MediaMTX-ről (github doksi).
         Ezen szolgáltatás révén valósul meg a kamera streamek eljutását a dashboardhoz, úgy hogy a 
         H264-es kódolású videót RTSP-vé konvertálja. A stream a dashboardhoz egy Cloudfare alagúton keresztül jut majd el.
         (Grafikon, config file, stb)
@@ -29,10 +37,36 @@ Grafikon  és magyarázat
 
     \section{Cloud Stack}
     A rendszer lelke teljes valójában a google cloudban található, mely igen széleskörű eszköztárat biztosított számomra a projekt megvalósításához.
-    További infók
+    Az infrastruktúra felépítéséhez Terraform keretrendszert használtunk.
+
+        \subsection{Terraform keretrendszer}
+        A terraform egy deklaratív nyelvezetű keretrendszer, mely használatával bármilyen infrastruktúrai elem és erőforrás definiálható
+        emberek számára is értelmezhető nyelven. Ezen megvalósítások, verziózhatóak, disztributálhatóak és bármikor újrafelhasználhatóak.
+        Segítségével az alkalmazás minden életszakasza könnyűszerrel menedzselhető, ugyanitt maga az egész folyamat rendkivül könnyen automatizálható.
+        
+        \subsection{Terraform működése}
+        A terraform a különböző cloud platformok erőforrásait a saját Api-jain keresztül menedzseli, a közösségnek hála ma már szinte bármelyik
+        szolgáltató rendszerét használhatjuk a terraformon keresztül. Például AWS, Google Cloud, Kubernetes, Git stb. A terraform működése 3 fázisban történik:
+
+            \subsubsection{Írás-Write}
+            Definiáljuk az erőforrásokat, melyek akár több szolgáltatótól is származhatnak, egy .tf kiterjesztésű fileba.
+            
+            \subsubsection{Tervezés-Plan}
+            A terraform plan parancs kiadása után, létrejön a terv, mely leírja az infrastruktúrát, mi jön létre, mi változik vagy éppen mi szűnik majd meg.
+            Az általunk megadott Konfigurációs fileoknak megfelelően.
+
+            \subsubsection{Alkalmazás-Apply}
+            Engedélyezés esetén a terraform elvégzi a szükséges műveleteket, tiszteletben tartva 
+
+                \begin{figure}[H]
+                    \centering
+                    {\includegraphics[width=0.6\textwidth]{figures/images/literature/terraformstages.png}}
+                    \caption{Terraform Lépések}
+                \end{figure}
+
 
         \subsection{Google Cloud Projekt - GCP}
-            terraform?
+            
         \subsection{Vertex AI végpont}
 
         \subsection{Service Accounts}
@@ -86,9 +120,9 @@ Grafikon  és magyarázat
             
         \subsection{Firestore Collections}
         Ez egy olyan NoSQL adatbázis melyet a firebase platform biztosít számunkra, a választás, főként azért esett rá 
-        mert a tárolt adatok mind dokumentum alakúak. Az adatbázis mezői a következők: camera_id, melyik kamera észlelte az anomáliát,
+        mert a tárolt adatok mind dokumentum alakúak. Az adatbázis mezői a következők: camera\_id, melyik kamera észlelte az anomáliát,
         detections[], egy tömb mely az észlet anomáliákat tárolja (hiba neve + konfidencia), timestamp, egy időbélyeg mely mutatja mikor történt a detekció,
-        seq, a képkocka szekvencia száma melyet a frame_extractor.py biztosít és created_at, mikor került be a bejegyzés az adatbázisba.
+        seq, a képkocka szekvencia száma melyet a frame\_extractor.py biztosít és created\_at, mikor került be a bejegyzés az adatbázisba.
 
         \subsection{Composite index}
 

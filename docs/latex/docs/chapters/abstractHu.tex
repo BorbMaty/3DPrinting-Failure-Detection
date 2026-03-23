@@ -6,6 +6,7 @@ Cloud alkalmazásba való beillesztése, mely a hiba nyilvánvalóvá válásako
 modell, mely három webkameráról fogad streameket, ezzel minden szögből figyelve a tárgyasztalt, ezen élő adást, darabolja és adagolja a rendszer lelkének a Google Cloudban várakozó VertexAI végpontnak, melyben
 egy saját adathalmazon tanított, yolov8x konvoluciós neuronháló végzi a detekciót. 
 A vertexAI végpont elvégzi a detekciót, és amennyiben anomáliát észlel egy ún. figyelmeztetés kezelő rendszeren keresztül emailben értesíti a felhasználót, melynek tartalma az anomália neve, az őt észlelő kamera
-és az időbélyeg amikor a detekció történt. A Ui-n pedig megjelenik a bounding box a hiba körül, és a dashboardon pedig a hiba és a konfidencia érték.\\
+és az időbélyeg amikor a detekció történt. A Ui-n pedig megjelenik a bounding box a hiba körül, és a dashboardon pedig a hiba és a konfidencia érték.
+A rendszer megvalósításához olyan keretrendszereket használtunk mint a Terraform és a yolov8, összeköttetésben olyan eszközökkel, mint a python, cvat cimkéző szoftver és docker konténerek.\\
 
-\textbf{Kulcsszavak}: 3D nyomtatás,konvoluciós neuronháló, yolov8x, rasberry pi, Google Cloud, vertexAI, webkamera, hiba, anomália, additív gyártás\\
+\textbf{Kulcsszavak}: 3D nyomtatás,konvoluciós neuronháló, yolov8x, rasberry pi, Google Cloud, vertexAI, webkamera, hiba, anomália, additív gyártás, terraform, docker, firebase, cvat, python \\
