@@ -1,3 +1,11 @@
-Kivonat
+    A 3D nyomtatásban a hibák esetében, a kérdés nem az, hogy előfordulnak-e, hanem hogy mikor. Ezen additív gyártási folyamat során a hibák több kategóriába sorolhatók,
+és apróbb kellemetlenségektől, nyersanyagpazarlásig, akár a berendezésben okozott kárral is járhatnak. Okozó tényezők között van a nem megfelelő szeletelés, felhasználói hanyagság,
+mind az előkészítés mind a karbantartással kapcsolatban,de akár az is megtörténhet, hogy a nyomtatás során egyszerűen egy random faktor miatt következnek be, például a támasz eltörik, vagy a darab tapadása nem megfelelő.
+Jelen dolgozat célja egy olyan neuronháló betanítása, mely a gépkezelő jobbkezeként és szemeként működik, majd ennek egy olyan
+Cloud alkalmazásba való beillesztése, mely a hiba nyilvánvalóvá válásakor rögtön értesíti azt. A rendszer szemeként a kamera csomópont szolgál, mely fizikai megvalósítása egy rasberry pi 4B
+modell, mely három webkameráról fogad streameket, ezzel minden szögből figyelve a tárgyasztalt, ezen élő adást, darabolja és adagolja a rendszer lelkének a Google Cloudban várakozó VertexAI végpontnak, melyben
+egy saját adathalmazon tanított, yolov8x konvoluciós neuronháló végzi a detekciót. 
+A vertexAI végpont elvégzi a detekciót, és amennyiben anomáliát észlel egy ún. figyelmeztetés kezelő rendszeren keresztül emailben értesíti a felhasználót, melynek tartalma az anomália neve, az őt észlelő kamera
+és az időbélyeg amikor a detekció történt. A Ui-n pedig megjelenik a bounding box a hiba körül, és a dashboardon pedig a hiba és a konfidencia érték.\\
 
-\textbf{Kulcsszavak}: 
+\textbf{Kulcsszavak}: 3D nyomtatás,konvoluciós neuronháló, yolov8x, rasberry pi, Google Cloud, vertexAI, webkamera, hiba, anomália, additív gyártás\\

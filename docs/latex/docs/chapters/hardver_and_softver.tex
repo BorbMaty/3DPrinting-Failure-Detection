@@ -1,6 +1,6 @@
 \section{A teljes rendszer}
 
-Grafikon <3 és magyarázat
+Grafikon  és magyarázat
 
 \subsection{Kamera Agent- Rasberry pi}
     Kicsi információ magáról a pi-ről majd\dots
@@ -32,7 +32,7 @@ Grafikon <3 és magyarázat
     További infók
 
         \subsection{Google Cloud Projekt - GCP}
-
+            terraform?
         \subsection{Vertex AI végpont}
 
         \subsection{Service Accounts}
@@ -48,23 +48,47 @@ Grafikon <3 és magyarázat
             aktiválhatja az Alert-managert szügség esetén
 
             \subsubsection{sa-alert-manager}
-            A figyelmeztetés kezelésért felelő, egyaránt az anomáliák észlelésekor, és a költségvetés meghaladásakor. Jogusultságai, hogy
-            datastore felhasználó, firebase admin, esemény TODO           
+            A figyelmeztetés kezelésért felelő, egyaránt az anomáliák észlelésekor, és a költségvetés meghaladásakor. Jogusultságai: datastore.user, firebase.admin,
+            eventarc.eventReceiver, pubsub.subscriber, run.invoker.
+            
+            \subsubsection{sa-cicd}
+            Mivel az, hogy a terraform infrát mi kézzel szerkesszük nem egy jó praktika, így ehhez egy autómatizált github akciót használunk, ezzel szervíz pont ennek kezeléséért felelős.
+            Jogosultágai: artifactregistry.writer, pubsub.admin, editor, iam.serviceAccountUser 
+           
+            \subsubsection{Vertex AI agent}
+            A vertexAi endpoint a judge (bíró) docker Konténer futtatásáért felelős. Jogosultágai:
+            `pubsub.publisher` a detections-out csatornán.
 
+            \subsubsection{Pub/Sub agent}
+            a Pub/Sub csatornák menedzselésére szolgálnak. Jogosultágok:iam.serviceAccountTokenCreator.
 
-
-        \subsection{Pub\Sub Topics}
+        \subsection{Pub/Sub Topics}
             táblázat <3
 
         \subsection{Google Cloud Függvények}
 
             \subsubsection{Dispatcher}
+            A dispatcher szerepe, hogy hídkét szolgáljon az edge eszköz és a vertexAI végpont között. Bemenetére egy pub/sub üzenetet kap
+            a frames-in csatornáról, mely tartalma egy base64-re kódolt JPEG képkocka, a kamera id, egy szekvencia szám és az időbélyeg. Ezt továbbítja detekcióra
+            a vertexAI végpont számára. A három Cloud Függvény közül, ő a legmemória igényesebb, hiszen képkockák szállítását kezeli.
 
             \subsubsection{Alert-Manager}
+            A detekciós pipeline utolsó állomása. A pub/sub detections-out csatornáról megkapja a detekció eredményét, és ezeket a Firestore adatbázisba írja,
+            majd emailt küld a felhasználó számára az észlelt anomáliáról, fontos megjegyezni, hogy a rendszer jelen állapotában csak a magas jelzővel ellátott anomáliák esetén küld emailt,
+            a többieket, csak a dashboardra írja ki.
+
 
             \subsubsection{Budger Notifier}
+            Ezen függvény szerepe, hogy segítse a felhasználót abban, hogy a költségek ne szálljanak el, egy előre beállított
+            költségvetés túllépése után ismét emailben értesíti a felhasználót. Az alert-manager függvény keretein belül van megvalósítva,
+            viszont ő a budget-notifications pub/sub csatornán hallgatózik.
 
-            \subsubsection{Firestore Collections}
+            
+        \subsection{Firestore Collections}
+        Ez egy olyan NoSQL adatbázis melyet a firebase platform biztosít számunkra, a választás, főként azért esett rá 
+        mert a tárolt adatok mind dokumentum alakúak. Az adatbázis mezői a következők: camera_id, melyik kamera észlelte az anomáliát,
+        detections[], egy tömb mely az észlet anomáliákat tárolja (hiba neve + konfidencia), timestamp, egy időbélyeg mely mutatja mikor történt a detekció,
+        seq, a képkocka szekvencia száma melyet a frame_extractor.py biztosít és created_at, mikor került be a bejegyzés az adatbázisba.
 
         \subsection{Composite index}
 

@@ -37,6 +37,19 @@
 \definecolor{mauve}{rgb}{0.58,0,0.82}
 \definecolor{light-gray}{gray}{0.25}
 
+% Custom YAML language definition for listings
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{blue}\bfseries,
+  basicstyle=\ttfamily\small,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{teal},
+  morestring=[b]',
+  morestring=[b]",
+}
+
 \lstdefinestyle{yaml}{	
 	backgroundcolor=\color{white}, % choose the background color;
 	basicstyle=\fontsize{8}{8}\ttfamily,% the size of the fonts that are used for the code
