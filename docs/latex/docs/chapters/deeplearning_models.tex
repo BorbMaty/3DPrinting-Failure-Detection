@@ -45,47 +45,53 @@
     
     
     \subsection{Főbb karakterisztikák}
-    \begin{itemize}
-        \item Az ulralytics teljesen újragondolta a modell architektúráját, a Pytorch helyett teljesen saját architektúrára való áttérés történt, 
-        ez pedig visszafele inkompatibilitást jelent a YOLOv5 irányába.
-        \item Támogat obiektum detekciót, szegmentálást, pozíció becslést, obiektum osztályozást és követést.
-        \item A tanítás és a futtatás is egyaránt API-n és CLI-n keresztül történik, nincs szükség scriptekre.
-        \item Exportálási lehetőségek olyan formátumokba mint az ONNX, CoreML és TensorRT
-        \item Könnyen tanítható saját adathalmazokkal is.
-    \end{itemize}
-    
-    Ezekből is látszik, hogy miért esett ezen modelre a választás. Az adathalmaz elkészült, a cimkézés megtörtént, a következő lépés egyértelműen 
-    a tanítás lesz.
-    
+        A Yolov8 keretrendszerhez az Ultralytics teljes mértékben újragondolta a rendszer architektúráját,
+        A Pytorch helyett most más saját fejlesztésű rendszert használ, ennek segítségével a modell gyorsabb és stabilabb lett, viszont a
+        Yolov5 felé visszafele inkompatibilitást jelent. Ezen keretrendszer támogat az obiektum detekción kivűl, szegmentálást, pozició becslést, obiektum osztályozást és követést is egyaránt.
+        A tanítás és detekció most már nem igényel segéd scripteket sem, minden API hívásokkal valósul meg a CLI-n keresztül.
+        Ugyanitt lehetőségünk van a modellünk exportálására olyan formátumokba, mint az ONNX, CoreML, és TensorRT.
     
     \subsection{Modell variánsok}
     Felhasználási célok és hardverigény szerint a YOLOv8 több méretben elérhető, hogy több felhasználást legyen képes kiszolgálni.
-    
-    \begin{itemize}
-        \item \texttt{yolov8n} – Nano- a legkisebb modell, nagyon gyors és alacsony hardverigényű
-        \item \texttt{yolov8s} – Small
-        \item \texttt{yolov8m} – Medium
-        \item \texttt{yolov8l} – Large
-        \item \texttt{yolov8x} – Extra large- Legnagyobb elérhető pontosság, viszont a legnagyobb hardverigényű is.
-    \end{itemize}
+
+    \begin{table}[H]
+    \centering
+    \caption{YOLOv8 modell variánsok}
+    \label{tab:yolo_variansok}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabular}{|l|l|p{0.55\textwidth}|}
+        \hline
+        \textbf{Modell} & \textbf{Méret} & \textbf{Leírás} \\
+        \hline
+        \texttt{yolov8n} & Nano       & A legkisebb variáns, rendkívül gyors és minimális hardverigényű. \\
+        \hline
+        \texttt{yolov8s} & Small      & Kis méretű modell, gyors interferenciával, alacsony erőforrásigénnyel. \\
+        \hline
+        \texttt{yolov8m} & Medium     & Kiegyensúlyozott kompromisszum sebesség és pontosság között. \\
+        \hline
+        \texttt{yolov8l} & Large      & Nagy pontosságú modell, erősebb GPU-t igényel. \\
+        \hline
+        \texttt{yolov8x} & Extra Large & A legnagyobb pontosságot nyújtó variáns, egyúttal a legtöbb erőforrást igénylő. \\
+        \hline
+    \end{tabular}
+    \end{table}
     
     
     \subsection{Telepítési útmutató és alapszíntű felhasználás}
     
     Telepítés:
-    \begin{verbatim}
-    pip install ultralytics
-    \end{verbatim}
-    
+    \begin{lstlisting}[language=bash]
+pip install ultralytics
+    \end{lstlisting}
+
     Alap példa képfeldolgozásra:
-    \begin{verbatim}
-    from ultralytics import YOLO
-    model = YOLO("yolov8n.pt")
-    results = model("mütyür.jpg")
-    results.show()
-    \end{verbatim}
+    \begin{lstlisting}[language=Python]
+from ultralytics import YOLO
+model = YOLO("yolov8n.pt")
+results = model("stringing.jpg")
+results.show()
+    \end{lstlisting}
     
-    Mi a felhasználáshoz, azt szeretnénk, hogy egy python scripten keresztül a modell, valósidejű kameraképen fusson és deketáljon hibákat.
     
     \subsection{Saját dataset felhasználása tanításhoz}
     
@@ -96,18 +102,18 @@
     A \texttt{data.yaml} konfigurációs fájl tartalmazza az adathalmaz elérési útjait és az osztálycímkéket:
 
     \begin{lstlisting}[language=yaml]
-    train: images/train
-    val: images/val
-    nc: 8
-    names: ['stringing', 'warping', 'layer_shift', 'under_extrusion',
-            'over_extrusion', 'nozzle_clog', 'foreign_object_on_print_area',
-            'not_sticking', 'spagetti']
+train: images/train
+val: images/val
+nc: 8
+names: ['stringing', 'warping', 'layer_shift', 'under_extrusion',
+        'over_extrusion', 'nozzle_clog', 'foreign_object_on_print_area',
+        'not_sticking', 'spagetti']
     \end{lstlisting}
 
         Tanítási folyamat elindítása parancssoron keresztül:
 
         \begin{lstlisting}[language=bash]
-        yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=50 imgsz=640
+yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=50 imgsz=640
         \end{lstlisting}
     
     \subsection{Annotáció formátuma}
@@ -115,9 +121,9 @@
     YOLO-formátumban minden kép mellé tartozik egy azonos nevű .txt file melynek tartalma a következőképpen 
     néz ki, minden sor egy obiektum, egy .txt file pedig több obiektumot is tartalmazhat:
     
-    \begin{verbatim}
-    <class_id> <x_center> <y_center> <width> <height>
-    \end{verbatim}
+    \begin{lstlisting}
+<class_id> <x_center> <y_center> <width> <height>
+    \end{lstlisting}
     
     Az obiektumokat leíró értéket lebegőpontos ábrázolás módban vannak, kifejezve, egyenként a képpel arányosan 0-1 közötti értékekre 
     normalizálva. Az annotáláshoz CVAT szoftvert használtam.
