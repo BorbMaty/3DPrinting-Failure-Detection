@@ -1,6 +1,4 @@
-fastapi
-uvicorn[standard]
 ultralytics
 opencv-python-headless
 numpy
-pydantic
+google-cloud-pubsub

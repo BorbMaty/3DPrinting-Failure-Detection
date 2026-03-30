@@ -61,8 +61,9 @@
                 \begin{figure}[H]
                     \centering
                     {\includegraphics[width=0.6\textwidth]{figures/images/literature/terraformstages.png}}
-                    \caption{Terraform Lépések}
+                    \caption{Terraform Lépések\footnotemark}
                 \end{figure}
+                \footnotetext{\textit{Terraform}: \url{https://developer.hashicorp.com/terraform/intro/}}
 
 
         \subsection{Google Cloud Projekt - GCP}
@@ -97,7 +98,8 @@
             a Pub/Sub csatornák menedzselésére szolgálnak. Jogosultágok:iam.serviceAccountTokenCreator.
 
         \subsection{Pub/Sub Topics}
-            táblázat <3
+            
+                
 
         \subsection{Google Cloud Függvények}
 
@@ -119,12 +121,16 @@
 
             
         \subsection{Firestore Collections}
-        Ez egy olyan NoSQL adatbázis melyet a firebase platform biztosít számunkra, a választás, főként azért esett rá 
-        mert a tárolt adatok mind dokumentum alakúak. Az adatbázis mezői a következők: camera\_id, melyik kamera észlelte az anomáliát,
-        detections[], egy tömb mely az észlet anomáliákat tárolja (hiba neve + konfidencia), timestamp, egy időbélyeg mely mutatja mikor történt a detekció,
-        seq, a képkocka szekvencia száma melyet a frame\_extractor.py biztosít és created\_at, mikor került be a bejegyzés az adatbázisba.
+        Az adatbáziskezelő rendszereknek két nagy fajtáját különböztetünk meg, a relációs adatbázisokat, és a nem relációs avagy NoSQL (Not only SQL) adatbázisokat.
+        A fő különbség , hogy a reláciiós adatbázisokban az adatok táblákba rendezettek, és köztük jól meghatározott kapcsolatok vannak. Viszont a NoSql adatbázisokban az 
+        adatok úgynevezett dokumentumokban vannak eltárolva, melyek szerkezete sokkal rugalmasabb és nem igényel előre meghatározott sémát. Mivel a projekt főként json formátumú
+        adatokkal dolgozik, így a NoSQL adatbázisok sokkal jobban megfelelnek a céljainknak, és a Firestore egy igen népszerű és megbízható választás ezen a téren.
 
-        \subsection{Composite index}
+        A firebase platform által biztosított adatbázis mezői a következők: camera\_id, melyik kamera észlelte az anomáliát,
+        detections[], egy tömb mely az észlet anomáliákat tárolja (hiba neve + konfidencia), timestamp, egy időbélyeg mely mutatja mikor történt a detekció,
+        seq, a képkocka szekvencia száma melyet a frame\_extractor.py biztosít és created\_at, mikor került be a bejegyzés az adatbázisba. Az adatbázisban való keresést
+        egy kompozit index használatával lett könnyebb a camera\_id ASC + timestamp Desc, azaz id-k szerint növekvő, és időbélyeg szerint csökkenő sorrendbe rendezve.
+
 
         \subsection{Konténer képek}
 
