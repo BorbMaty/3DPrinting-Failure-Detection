@@ -1,0 +1,164 @@
+<mxfile host="app.diagrams.net" modified="2026-04-01" version="21.0.0">
+  <diagram name="GCP Architecture" id="gcp-architecture">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="GCP Projekt Teljes Architektúra — printermonitor-488112" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- === EDGE SIDE === -->
+        <mxCell id="edge_group" value="Edge (Raspberry Pi)" style="swimlane;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="webcams" value="3x Webcam" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="edge_group">
+          <mxGeometry x="30" y="50" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mediamtx_edge" value="MediaMTX&#xa;(RTSP szerver)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="edge_group">
+          <mxGeometry x="30" y="120" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="frame_extractor" value="frame_extractor.py&#xa;(sa-frame-extractor)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="edge_group">
+          <mxGeometry x="30" y="180" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudflared" value="cloudflared&#xa;(Cloudflare Tunnel)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="edge_group">
+          <mxGeometry x="30" y="240" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_cams_mtx" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="webcams" target="mediamtx_edge" parent="edge_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_mtx_fe" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="mediamtx_edge" target="frame_extractor" parent="edge_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- === GCP Cloud boundary === -->
+        <mxCell id="gcp_group" value="Google Cloud Platform (printermonitor-488112)" style="swimlane;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="300" y="80" width="1000" height="760" as="geometry" />
+        </mxCell>
+
+        <!-- Pub/Sub Topics -->
+        <mxCell id="pubsub_group" value="Pub/Sub Topics" style="swimlane;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;startSize=25;" vertex="1" parent="gcp_group">
+          <mxGeometry x="30" y="50" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="frames_in" value="frames-in" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="pubsub_group">
+          <mxGeometry x="20" y="40" width="160" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="detections_out" value="detections-out" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="pubsub_group">
+          <mxGeometry x="20" y="90" width="160" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="budget_notif" value="budget-notifications" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="pubsub_group">
+          <mxGeometry x="20" y="140" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Cloud Functions -->
+        <mxCell id="functions_group" value="Cloud Functions" style="swimlane;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;startSize=25;" vertex="1" parent="gcp_group">
+          <mxGeometry x="300" y="50" width="200" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatcher_fn" value="Dispatcher&#xa;(sa-dispatcher)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="functions_group">
+          <mxGeometry x="20" y="40" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="alert_manager_fn" value="Alert-Manager&#xa;(sa-alert-manager)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="functions_group">
+          <mxGeometry x="20" y="110" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="budget_notifier_fn" value="Budget Notifier&#xa;(sa-alert-manager)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="functions_group">
+          <mxGeometry x="20" y="190" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Vertex AI -->
+        <mxCell id="vertexai" value="Vertex AI Végpont&#xa;judge konténer&#xa;(YOLOv8)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="gcp_group">
+          <mxGeometry x="580" y="100" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Artifact Registry -->
+        <mxCell id="artifact_registry" value="Artifact Registry&#xa;judge:&lt;sha&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="gcp_group">
+          <mxGeometry x="580" y="240" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Firestore -->
+        <mxCell id="firestore" value="Firestore&#xa;(detections collection)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="gcp_group">
+          <mxGeometry x="580" y="370" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Firebase Hosting -->
+        <mxCell id="firebase_hosting" value="Firebase Hosting&#xa;Dashboard (SPA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="gcp_group">
+          <mxGeometry x="800" y="200" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Budget Alert -->
+        <mxCell id="budget_alert" value="Budget Alert&#xa;(Billing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="gcp_group">
+          <mxGeometry x="30" y="350" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Email notification -->
+        <mxCell id="email" value="Email&#xa;(felhasználó)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="gcp_group">
+          <mxGeometry x="800" y="370" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Service accounts legend -->
+        <mxCell id="sa_legend" value="Service Accounts&#xa;sa-frame-extractor | sa-dispatcher&#xa;sa-alert-manager | sa-cicd&#xa;vertex-ai agent | pub-sub agent" style="text;html=1;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;dashed=1;fontSize=11;" vertex="1" parent="gcp_group">
+          <mxGeometry x="580" y="480" width="390" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- === EDGES within GCP === -->
+        <!-- frame_extractor -> frames-in -->
+        <mxCell id="e_fe_fin" value="publish&#xa;(base64 JPEG)" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="frames_in" target="dispatcher_fn" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- dispatcher -> Vertex AI -->
+        <mxCell id="e_disp_vertex" value="predict()" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="dispatcher_fn" target="vertexai" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Vertex AI -> detections-out -->
+        <mxCell id="e_vertex_dout" value="publish result" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="vertexai" target="detections_out" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- detections-out -> alert-manager -->
+        <mxCell id="e_dout_alert" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="detections_out" target="alert_manager_fn" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- alert-manager -> firestore -->
+        <mxCell id="e_alert_fs" value="write" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="alert_manager_fn" target="firestore" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- alert-manager -> email -->
+        <mxCell id="e_alert_email" value="send email&#xa;(ha HIGH)" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="alert_manager_fn" target="email" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- budget-notif -> budget-notifier -->
+        <mxCell id="e_budget_fn" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="budget_notif" target="budget_notifier_fn" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- budget-alert -> budget-notif -->
+        <mxCell id="e_billing_pub" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" source="budget_alert" target="budget_notif" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- budget-notifier -> email -->
+        <mxCell id="e_budgetfn_email" value="send email" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="budget_notifier_fn" target="email" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- firestore -> firebase hosting (onSnapshot) -->
+        <mxCell id="e_fs_dash" value="onSnapshot" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" source="firestore" target="firebase_hosting" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Artifact Registry -> Vertex AI -->
+        <mxCell id="e_ar_vertex" value="pull image" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" source="artifact_registry" target="vertexai" parent="gcp_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- === CROSS BOUNDARY EDGES === -->
+        <!-- frame_extractor (edge) -> frames-in (gcp) -->
+        <mxCell id="e_fe_ps" value="publish frames-in&#xa;(sa-frame-extractor)" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="frame_extractor" target="frames_in" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- cloudflared -> firebase hosting -->
+        <mxCell id="e_cf_fb" value="WebRTC stream" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" source="cloudflared" target="firebase_hosting" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

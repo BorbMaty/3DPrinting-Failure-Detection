@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" modified="2026-04-01" version="21.0.0">
+  <diagram name="Judge CI/CD Pipeline" id="judge-cicd">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="judge Docker Image — Build és Deploy Életciklus" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="750" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Developer push -->
+        <mxCell id="dev_push" value="Developer&#xa;push to judge/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- GitHub Actions trigger -->
+        <mxCell id="gh_trigger" value="GitHub Actions&#xa;docker-judge.yml&#xa;(push trigger)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="120" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="dev_push" target="gh_trigger" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Authenticate -->
+        <mxCell id="auth_step" value="1. Hitelesítés&#xa;sa-cicd kulccsal&#xa;(GCP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="60" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="gh_trigger" target="auth_step" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Docker build -->
+        <mxCell id="docker_build" value="2. Docker build&#xa;judge/Dockerfile&#xa;(YOLOv8 + FastAPI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="180" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="auth_step" target="docker_build" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Tag with SHA -->
+        <mxCell id="tag_step" value="3. Tag&#xa;judge:&lt;commit-sha&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="300" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="docker_build" target="tag_step" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Push to Artifact Registry -->
+        <mxCell id="push_ar" value="4. Push&#xa;Artifact Registry&#xa;(GCP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="420" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="tag_step" target="push_ar" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Vertex AI pull -->
+        <mxCell id="vertex_pull" value="Vertex AI Végpont&#xa;következő aktiváláskor&#xa;pull image" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="420" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="automatikus" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" source="push_ar" target="vertex_pull" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- judge container running -->
+        <mxCell id="judge_run" value="judge konténer fut&#xa;YOLOv8 modell betöltve&#xa;Pub/Sub listener aktív" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="560" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="vertex_pull" target="judge_run" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Note: judge model file -->
+        <mxCell id="model_note" value="YOLOv8 .pt modell&#xa;beépítve az image-be&#xa;(nem letöltve futáskor)" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;dashed=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="300" y="180" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e_model" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=none;" edge="1" source="model_note" target="docker_build" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

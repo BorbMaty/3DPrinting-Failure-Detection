@@ -1,32 +1,106 @@
-\section{A projektről TODO!}
+\section{A projekt motivációja}
 
-A 3D nyomatás folyamat során rengeteg hiba bekövetkezhet,
-melyek kihatnak a nyomtatott darab minőségére, anyagi kárt okoznak, súlyosabb esetben
-a nyomató életébe is kerülhetnek. A folyamat valós idejű monitorizálásával, és 
-jól tanított konvoluciós neurális hálózatok segítségével ezen hibák egy igen nagy része felismerhető.
-A hibákat két kategóriába sorolnám: Nyomatás közben korrigálható, és azonnal félbeszakítandó hibák. 
-A projekt célja egy olyan rendszer létrehozása, mely valós időben monitorizálja a 3D nyomatási folyamatot, minden lehetséges szögből,
-Felismeri az adott hibát, és ennek megfelelően értesíti a felhasználót a teendőkről. Ezzel jelentős, költséget,
-időt és nyersanyagot megspórolva a felhasználónak.
+Az additív gyártás -- ezen belül is az FDM (Fused Deposition Modelling) alapú 3D nyomtatás -- az elmúlt
+évtizedben kiemelkedő szerepet töltött be a modern gyártóiparban. A technológia lehetővé teszi egyedi
+geometriák, kis sorozatú alkatrészek és funkcionális prototípusok gyors, gazdaságos előállítását, melyre
+a hagyományos szubsztraktív eljárások nem képesek ilyen rugalmassággal. Ezen előnyök eredményeképpen
+a 3D nyomtatás napjainkra az ipari termelésen túl az egészségügytől az űrtechnológiáig számos területen
+meghonosodott.
 
-\subsection{Iparági relevancia és nyersanyagmenedzsment}
-A 3D nyomatás a jelenben már egy igen komoly iparággá nőtte, ki magát, tekintettel lévén arra, hogy 
-Rengeteg új geometria megvalósítására nyitott kapukat, az additív gyártásban, és rendkívűl egyszerűvé tette a 
-prototípus gyártást, ezzel gyorsítva a tömeggyártáshoz való eljutást. De miért is fontos a valós idejű monitorizálás?
-Egy hobbiista, akinek egy nyomtató ül az asztalánál megengedheti magának, hogy időközönként ránézzen és közbelépjen
-amenyiben ez indokolt, viszont az iparban, ahol egy nyomtatófarmon belül akár száz nyomtató is lehet ezt már
-nem engedhetjük meg magunknak, automatizálni kell.
+Ugyanakkor a technológia széleskörű elterjedésével párhuzamosan az üzemeltetési kihívások is egyre
+összetettebbekké válnak. A nyomtatási folyamatok -- különösen FDM technológia esetén -- számos tipikus
+meghibásodásra hajlamosak, amelyek anyagveszteséget, időveszteséget, illetve súlyosabb esetben a
+berendezés megrongálódását okozhatják. Ilyen körülmények között a hibák kézi, szemrevételezésen alapuló
+felismerése nem csupán lassú és körülményes, hanem nagyüzemi környezetben gyakorlatilag kivitelezhetetlen.
+
+Jelen fejezet ismerteti azokat az iparági és műszaki tényezőket, amelyek indokolttá teszik egy
+valós idejű, mesterséges intelligencián alapuló hibadetektor rendszer kifejlesztését, majd összefoglalja
+a projekt konkrét célkitűzéseit.
+
+% -------------------------------------------------------------------
+\subsection{Iparági relevancia és a nyomtatógazdálkodás kihívásai}
+
+A 3D nyomtatás iparági térhódítása az elmúlt évtizedben látványos volt. A gyártóüzemekben egyre
+elterjedtebbé válnak az úgynevezett nyomtatófarmok, ahol egyetlen helyszínen tíz vagy akár száz
+nyomtatóegység üzemel egyidejűleg \cite{voxelmatters2023farm}. Ilyen léptékű infrastruktúra esetén a
+manuális felügyelet -- azaz a kezelő személyes jelenlétével megvalósuló ellenőrzés -- nem valósítható
+meg hatékonyan: a karbantartó személyzet sem az egyes gépek állapotát, sem az éppen zajló nyomtatásokat
+nem képes folyamatosan nyomon követni.
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.6\textwidth]{figures/images/literature/3dprintfarm.jpg}
-    \caption{3D nyomtató farm\protect\footnotemark}
+    \caption[3D nyomtató farm]{3D nyomtató farm \cite{voxelmatters2023farm}}
 \end{figure}
-\footnotetext{\textit{3D nyomtató farm}: \url{https://www.voxelmatters.com/the-rise-of-3d-printer-farms/}}
 
-Egy ilyen farm esetén, már egy szeletelési hiba is, ha észrevétlen marad anyagi kárral, nyersanyagveszteséggel
-vagy a berendezések sérülésével járhat. A 3D nyomtatási folyamatok egyik nagy problámája az, hogy igen csak időigényesek, és a nagyszámok törvénye alapján
-a hibák bekövetkezésének esélye is növekszik.
-A projekt keretein egy olyan skálázható rendszert szeretnénk megvalósítani, mely képes minden nyomtatón, több szögből, figyelni a darabokat, és
-hiba kategóriának megfelelően jelezni amenyiben beavatkozásra van szükség. Az alapötlet: Egy olyan konvoluciós neuron háló
-betanítása mely képes felismerni az alap hibákat, es ennek a beillesztése egy olyan keretrendszerbe, mely a tárgyasztalokat figyeli, különböző szögekből.
+A farm-üzemeltetés sajátos kihívást jelent a hibadetektálás szempontjából is. Ha egyetlen gépen
+bekövetkező hiba -- például szálazás, réteg-eltolódás vagy tapadásvesztés -- észrevétlen marad, az
+anyag- és időveszteség sokszorozódhat: a nyomtató akár órákon át termel selejtet, mire a kezelő
+beavatkozik. Súlyosabb esetben a fúvóka károsodása vagy a tárgyasztal megsérülése komoly javítási
+költséget von maga után. Az automatizált monitorozás ebben a kontextusban nem csupán kényelmi
+eszköz, hanem gazdasági szükségszerűség \cite{obico2021}.
+
+% -------------------------------------------------------------------
+\subsection{A nyomtatási hibák műszaki és gazdasági hatása}
+
+A 3D nyomtatási folyamat több okból is hibásodhat meg: a nem megfelelően kondicionált filamenttől
+és hibás szeletelési beállításoktól egészen a kalibrációs eltérésekig és hardveres meghibásodásokig.
+A leggyakoribb és legsúlyosabb következményekkel járó hibatípusok a következők:
+
+\begin{itemize}
+    \item \textbf{Tapadásvesztés és spagetti:} Az első réteg elválása a tárgyasztaltól az egyik
+    legelterjedtebb és legnehezebben megelőzhető hiba. Ha a darab elveszíti rögzítettségét,
+    a fúvóka a levegőbe extrudálja az anyagot, egy jellegzetes, rendezetlenül összegubancolódott
+    szálkupacot -- köznyelvben „spagettit" -- hozva létre. Az anyagveszteség ilyenkor akár több
+    tíz gramm is lehet.
+    \item \textbf{Réteg-eltolódás (layer shift):} A koordináta-rendszerbeli eltérés miatt a
+    nyomtatott rétegek elcsúsznak egymáshoz képest, a darab szerkezete meggyengül vagy teljesen
+    használhatatlanná válik.
+    \item \textbf{Alul- és felülextrúdálás:} Az anyagadagolás egyensúlytalansága a darab
+    struktúrális integritását veszélyezteti; szélső esetben fúvókaduguláshoz vezet.
+    \item \textbf{Szálazás (stringing):} Bár nem feltétlenül teszi funkcióképtelenné a darabot,
+    az esztétikai és precíziós igényekre érzékeny alkalmazásokban elfogadhatatlan
+    minőséget eredményez.
+\end{itemize}
+
+Ezek a hibák nemcsak az egyes darabok minőségét rontják le, hanem -- ha felügyelet nélkül maradnak
+-- a gyártóeszköz élettartamát is csökkenthetik. A nyomtatófarmok üzemeltetői számára különösen
+fontos a korai, automatikus jelzés, hiszen a kiesési idő és az anyagköltség közvetlen üzleti
+veszteséget jelent.
+
+% -------------------------------------------------------------------
+\subsection{Az automatizált monitorozás szükségessége}
+
+Az automatizált képfeldolgozás és a mélytanulási módszerek rohamos fejlődése napjainkra megteremtette
+az alapot a valós idejű ipari hibadetekcióhoz. A konvolúciós neurális
+hálózatok (CNN-ek) képesek vizuális mintázatok felismerésére akkor is, ha azok az emberi szem
+számára nehezen, vagy csak figyelmes vizsgálattal azonosíthatók. Az Obico (korábban The Spaghetti
+Detective) projekt például egy nyílt forráskódú, mesterséges intelligencián alapuló megoldást nyújt
+az FDM nyomtatók felügyeletéhez, és igazolta, hogy ilyen rendszerek a valóságban is megbízhatóan
+működtethetők \cite{obico2021}.
+
+Ugyanakkor az elérhető megoldások jellemzően egyetlen szögből figyelik a nyomtatót, ami korlátozza
+az észlelhető hibatípusok körét. Egy, a tárgyasztalt több kameraállásból felügyelő rendszer
+lényegesen pontosabb képet ad a folyamatról, és olyan hibák is detektálhatóvá válnak, amelyek
+egyetlen nézőpontból nem látszanak.
+
+% -------------------------------------------------------------------
+\subsection{A projekt célkitűzései}
+
+A fentiekben ismertetett iparági igények és műszaki lehetőségek alapján a jelen projekt célja egy
+olyan skálázható, valós idejű monitorozó- és hibadetektor rendszer megtervezése és megvalósítása,
+amely:
+
+\begin{itemize}
+    \item Minden felügyelt nyomtatót egyszerre, \textbf{több kameraállásból} figyel;
+    \item \textbf{Konvolúciós neurális hálózat} segítségével automatikusan azonosítja a leggyakoribb
+    FDM hibatípusokat;
+    \item A detektált hibát \textbf{kategorizálja} -- megkülönböztetve a nyomtatás közbeni
+    beavatkozást igénylő, illetve az azonnali leállítást indokló eseteket;
+    \item A felhasználót \textbf{valós időben értesíti} a szükséges teendőkről;
+    \item \textbf{Skálázható} architektúrán alapul, hogy nyomtatófarmok esetén is alkalmazható legyen.
+\end{itemize}
+
+A rendszer megvalósításával jelentős anyag-, idő- és költségmegtakarítás érhető el, mivel a hibák
+korai felismerése megakadályozza a selejtes darabok keletkezésének elhúzódását és a berendezések
+esetleges sérülését.
