@@ -1,82 +1,178 @@
-<mxfile host="app.diagrams.net" modified="2026-04-01" version="21.0.0">
-  <diagram name="Judge CI/CD Pipeline" id="judge-cicd">
-    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+<mxfile host="app.diagrams.net" modified="2026-04-04" version="21.0.0">
+  <diagram name="Docker Container Lifecycle" id="docker-lifecycle">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <!-- Title -->
-        <mxCell id="title" value="judge Docker Image — Build és Deploy Életciklus" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="200" y="20" width="750" height="30" as="geometry" />
+        <!-- ============ TITLE ============ -->
+        <mxCell id="title" value="Docker Container Lifecycle" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="500" y="15" width="450" height="35" as="geometry" />
         </mxCell>
 
-        <!-- Developer push -->
-        <mxCell id="dev_push" value="Developer&#xa;push to judge/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="120" width="140" height="60" as="geometry" />
+        <!-- ============ JUDGE CONTAINER ============ -->
+        <mxCell id="judge_swim" value="Judge Container (Vertex AI)" style="swimlane;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;startSize=28;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="70" width="500" height="460" as="geometry" />
         </mxCell>
 
-        <!-- GitHub Actions trigger -->
-        <mxCell id="gh_trigger" value="GitHub Actions&#xa;docker-judge.yml&#xa;(push trigger)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="270" y="120" width="160" height="60" as="geometry" />
+        <!-- Build phase -->
+        <mxCell id="j_phase_build" value="Build Phase (GitHub Actions: docker-judge.yml)" style="swimlane;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontStyle=1;startSize=20;rounded=1;" vertex="1" parent="judge_swim">
+          <mxGeometry x="15" y="40" width="470" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="dev_push" target="gh_trigger" parent="1">
+        <mxCell id="j_base" value="&lt;b&gt;Base Image&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;pytorch/pytorch:2.2.0&lt;br&gt;-cuda12.1-cudnn8-runtime&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;shadow=1;" vertex="1" parent="j_phase_build">
+          <mxGeometry x="10" y="30" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="j_deps" value="&lt;b&gt;Install Dependencies&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;ultralytics, opencv&lt;br&gt;google-cloud-pubsub&lt;br&gt;flask, numpy&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;shadow=1;" vertex="1" parent="j_phase_build">
+          <mxGeometry x="165" y="30" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="j_model" value="&lt;b&gt;Download Model&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;gsutil cp gs://...models&lt;br&gt;/yolov8x/best.pt&lt;br&gt;273 MB baked into image&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;shadow=1;" vertex="1" parent="j_phase_build">
+          <mxGeometry x="320" y="30" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="j_tag" value="&lt;b&gt;Tag &amp;amp; Push&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;judge:{commit-sha}&lt;br&gt;judge:latest&lt;br&gt;→ Artifact Registry&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;shadow=1;" vertex="1" parent="j_phase_build">
+          <mxGeometry x="165" y="110" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="jb1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;" edge="1" source="j_base" target="j_deps" parent="j_phase_build">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jb2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;" edge="1" source="j_deps" target="j_model" parent="j_phase_build">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jb3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;" edge="1" source="j_model" target="j_tag" parent="j_phase_build">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Authenticate -->
-        <mxCell id="auth_step" value="1. Hitelesítés&#xa;sa-cicd kulccsal&#xa;(GCP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="500" y="60" width="150" height="60" as="geometry" />
+        <!-- Runtime phase -->
+        <mxCell id="j_phase_run" value="Runtime Phase (Vertex AI Endpoint)" style="swimlane;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontStyle=1;startSize=20;rounded=1;" vertex="1" parent="judge_swim">
+          <mxGeometry x="15" y="240" width="470" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="gh_trigger" target="auth_step" parent="1">
+        <mxCell id="j_pull" value="&lt;b&gt;Pull Image&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;from Artifact Registry&lt;br&gt;europe-west1-docker.pkg.dev&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;shadow=1;" vertex="1" parent="j_phase_run">
+          <mxGeometry x="10" y="30" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="j_load" value="&lt;b&gt;Load Model&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;YOLO('/app/best.pt')&lt;br&gt;on T4 GPU&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;shadow=1;" vertex="1" parent="j_phase_run">
+          <mxGeometry x="170" y="30" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="j_serve" value="&lt;b&gt;Serve HTTP :8080&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;POST /predict&lt;br&gt;GET /healthz&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;shadow=1;" vertex="1" parent="j_phase_run">
+          <mxGeometry x="320" y="30" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="j_detect" value="&lt;b&gt;Inference Loop&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Receive frame → YOLOv8x detect&lt;br&gt;→ Publish to detections-out (Pub/Sub)&lt;br&gt;CONF_THRESHOLD: 0.35 | user: appuser (1001)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;shadow=1;" vertex="1" parent="j_phase_run">
+          <mxGeometry x="100" y="115" width="280" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="jr1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;" edge="1" source="j_pull" target="j_load" parent="j_phase_run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jr2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;" edge="1" source="j_load" target="j_serve" parent="j_phase_run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jr3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d79b00;fontSize=9;" edge="1" source="j_serve" target="j_detect" parent="j_phase_run">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Docker build -->
-        <mxCell id="docker_build" value="2. Docker build&#xa;judge/Dockerfile&#xa;(YOLOv8 + FastAPI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="500" y="180" width="150" height="60" as="geometry" />
+        <!-- ============ MEDIAMTX CONTAINER ============ -->
+        <mxCell id="mtx_swim" value="MediaMTX Container (Raspberry Pi)" style="swimlane;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;startSize=28;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="70" width="460" height="220" as="geometry" />
         </mxCell>
-        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="auth_step" target="docker_build" parent="1">
+
+        <mxCell id="m_base" value="&lt;b&gt;Base Image&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;bluenviron/mediamtx:latest&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;shadow=1;" vertex="1" parent="mtx_swim">
+          <mxGeometry x="15" y="40" width="130" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="m_config" value="&lt;b&gt;Copy Config&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;mediamtx.yml&lt;br&gt;3 paths: cam1, cam2, cam3&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;shadow=1;" vertex="1" parent="mtx_swim">
+          <mxGeometry x="165" y="40" width="130" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="m_run" value="&lt;b&gt;Run Server&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;user: 65534 (nobody)&lt;br&gt;Ports: 8554, 8080, 8888, 8889, 8890&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;shadow=1;" vertex="1" parent="mtx_swim">
+          <mxGeometry x="315" y="40" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="m_health" value="&lt;b&gt;Health Check&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;HTTP GET :8889&lt;br&gt;Interval: 30s | Timeout: 5s&lt;br&gt;Retries: 3 | Start: 10s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;shadow=1;" vertex="1" parent="mtx_swim">
+          <mxGeometry x="165" y="120" width="130" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mb1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#82b366;" edge="1" source="m_base" target="m_config" parent="mtx_swim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mb2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#82b366;" edge="1" source="m_config" target="m_run" parent="mtx_swim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mb3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#b85450;dashed=1;" edge="1" source="m_run" target="m_health" parent="mtx_swim">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Tag with SHA -->
-        <mxCell id="tag_step" value="3. Tag&#xa;judge:&lt;commit-sha&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="500" y="300" width="150" height="60" as="geometry" />
+        <!-- ============ FRAME EXTRACTOR CONTAINER ============ -->
+        <mxCell id="fe_swim" value="Frame Extractor Container (Raspberry Pi)" style="swimlane;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;startSize=28;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="320" width="460" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="docker_build" target="tag_step" parent="1">
+
+        <mxCell id="f_base" value="&lt;b&gt;Base Image&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;python:3.12-slim&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;shadow=1;" vertex="1" parent="fe_swim">
+          <mxGeometry x="15" y="40" width="120" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="f_deps" value="&lt;b&gt;Install Deps&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;opencv-headless&lt;br&gt;google-cloud-pubsub&lt;br&gt;numpy&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;shadow=1;" vertex="1" parent="fe_swim">
+          <mxGeometry x="160" y="40" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f_run" value="&lt;b&gt;Run Capture&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;user: appuser (1001)&lt;br&gt;Multi-threaded (1 per cam)&lt;br&gt;RTSP pull → JPEG → Pub/Sub&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;shadow=1;" vertex="1" parent="fe_swim">
+          <mxGeometry x="305" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="f_health" value="&lt;b&gt;Health Check&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;HTTP GET /healthz :8080&lt;br&gt;Interval: 30s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;shadow=1;" vertex="1" parent="fe_swim">
+          <mxGeometry x="160" y="125" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f_env" value="&lt;b&gt;Environment&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;CAPTURE_FPS=2 | JPEG_QUALITY=70&lt;br&gt;FRAME_WIDTH=640 | FRAME_HEIGHT=480&lt;br&gt;RTSP_URLS, CAMERA_IDS, GCP_PROJECT&lt;/font&gt;" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;dashed=1;fontSize=9;spacingLeft=4;spacingTop=2;" vertex="1" parent="fe_swim">
+          <mxGeometry x="305" y="120" width="140" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fb1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;" edge="1" source="f_base" target="f_deps" parent="fe_swim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fb2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;" edge="1" source="f_deps" target="f_run" parent="fe_swim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fb3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#b85450;dashed=1;" edge="1" source="f_run" target="f_health" parent="fe_swim">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Push to Artifact Registry -->
-        <mxCell id="push_ar" value="4. Push&#xa;Artifact Registry&#xa;(GCP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="500" y="420" width="150" height="60" as="geometry" />
+        <!-- ============ DEPLOYMENT TARGETS ============ -->
+        <mxCell id="deploy_title" value="&lt;b&gt;Deployment Targets&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="70" width="200" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="tag_step" target="push_ar" parent="1">
+
+        <mxCell id="vertex_target" value="&lt;b&gt;Vertex AI Endpoint&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;n1-standard-4 + T4 GPU&lt;br&gt;europe-west1&lt;br&gt;Min replicas: 1 | Max: 1&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="110" width="200" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pi_target" value="&lt;b&gt;Raspberry Pi&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;docker compose up -d&lt;br&gt;MediaMTX + Frame Extractor&lt;br&gt;Local network + Cloudflare Tunnel&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="210" width="200" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ar_store" value="&lt;b&gt;Artifact Registry&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;europe-west1-docker.pkg.dev/&lt;br&gt;printermonitor-488112/&lt;br&gt;printermonitor/judge:{sha|latest}&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="310" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Deployment edges -->
+        <mxCell id="de1" value="judge image" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;fontColor=#333333;strokeWidth=2;" edge="1" source="j_tag" target="ar_store" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="545" y="235" />
+              <mxPoint x="1060" y="235" />
+              <mxPoint x="1060" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="de2" value="pull + deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#9673a6;fontSize=9;fontColor=#333333;dashed=1;" edge="1" source="ar_store" target="vertex_target" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1320" y="350" />
+              <mxPoint x="1320" y="143" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="de3" value="runs on" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;fontSize=9;fontColor=#333333;dashed=1;" edge="1" source="fe_swim" target="pi_target" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="de4" value="runs on" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#82b366;fontSize=9;fontColor=#333333;dashed=1;" edge="1" source="mtx_swim" target="pi_target" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Vertex AI pull -->
-        <mxCell id="vertex_pull" value="Vertex AI Végpont&#xa;következő aktiváláskor&#xa;pull image" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="720" y="420" width="160" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="e6" value="automatikus" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" source="push_ar" target="vertex_pull" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- judge container running -->
-        <mxCell id="judge_run" value="judge konténer fut&#xa;YOLOv8 modell betöltve&#xa;Pub/Sub listener aktív" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="720" y="560" width="160" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="vertex_pull" target="judge_run" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- Note: judge model file -->
-        <mxCell id="model_note" value="YOLOv8 .pt modell&#xa;beépítve az image-be&#xa;(nem letöltve futáskor)" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;dashed=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="300" y="180" width="150" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="e_model" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=none;" edge="1" source="model_note" target="docker_build" parent="1">
-          <mxGeometry relative="1" as="geometry" />
+        <!-- ============ LEGEND ============ -->
+        <mxCell id="legend" value="&lt;b&gt;Container Summary&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;&lt;font color=&quot;#9673a6&quot;&gt;Purple&lt;/font&gt; = Judge (PyTorch + YOLOv8x + CUDA) → Vertex AI&lt;br&gt;&lt;font color=&quot;#82b366&quot;&gt;Green&lt;/font&gt; = MediaMTX (RTSP/WebRTC server) → Raspberry Pi&lt;br&gt;&lt;font color=&quot;#6c8ebf&quot;&gt;Blue&lt;/font&gt; = Frame Extractor (Python 3.12) → Raspberry Pi&lt;br&gt;&lt;br&gt;All containers: non-root user, health checks, minimal images&lt;/font&gt;" style="text;html=1;strokeColor=#999999;fillColor=#f5f5f5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;dashed=1;fontSize=10;spacingLeft=6;spacingTop=4;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="560" width="400" height="100" as="geometry" />
         </mxCell>
 
       </root>

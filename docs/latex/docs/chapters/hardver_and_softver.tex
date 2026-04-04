@@ -7,7 +7,7 @@
 
                 \begin{figure}[H]
                     \centering
-                    {\includegraphics[width=0.8\textwidth]{figures/images/literature/rendszer.jpg}}
+                    {\includegraphics[width=\textwidth]{figures/images/literature/systemarch.jpg}}
                     \caption{A rendszer}
                 \end{figure}
 
@@ -25,7 +25,7 @@
     Ezek nélkül a rendszer nem valósulhatna meg.
 
         \subsection{MediaMTX}
-        A MediaMTX (korábban rtsp-simple-server) egy könnyűsúlyú, nyílt forráskódú médiaközvetítő szerver, mely Go programozási nyelven íródott.\cite{mediamtx}
+        A MediaMTX (korábban rtsp-simple-server) egy könnyűsúlyú, nyílt forráskódú médiaközvetítő szerver, mely Go programozási nyelven íródott\cite{mediamtx}.
         Szerepe a rendszerben, hogy a webkamerák által előállított nyers videófolyamokat RTSP protokoll szerint tegye elérhetővé a hálózaton.
         A pi-n systemd szolgáltatásként fut, így az eszköz indításakor automatikusan elindul, emberi beavatkozás nélkül.
         Konfigurációs fájlja definiálja a három kamerastream elérési útját, a kódolási paramétereket, valamint az újracsatlakozási logikát.
@@ -33,7 +33,7 @@
 
         \begin{figure}[H]
             \centering
-            {\includegraphics[width=0.8\textwidth]{figures/images/literature/mediamtx_pipeline.jpg}}
+            {\includegraphics[width=\textwidth]{figures/images/literature/mediamtx_pipeline.jpg}}
             \caption{MediaMTX stream pipeline}
         \end{figure}
 
@@ -93,7 +93,7 @@
 
         \subsection{Cloudflare alagút}
         A Cloudflare Tunnel egy fordított proxy megoldás, amely lehetővé teszi, hogy a Pi-n futó szolgáltatások nyilvánosan elérhetők legyenek
-        anélkül, hogy a routeren portot kellene nyitni, vagy statikus IP-cím szükséges lenne.\cite{cloudflare_tunnel}
+        anélkül, hogy a routeren portot kellene nyitni, vagy statikus IP-cím szükséges lenne\cite{cloudflare_tunnel}.
         A \texttt{cloudflared} démon a Pi-ről kifelé irányuló titkosított kapcsolatot épít fel a Cloudflare hálózata felé,
         így a tűzfal és a NAT nem akadályozza az elérést. Ez különösen fontos a RTSP videóstreamek dashboardra való eljuttatásakor.
 
@@ -108,7 +108,7 @@
 
         \subsection{Terraform keretrendszer}
         A terraform egy deklaratív nyelvezetű keretrendszer, mely használatával bármilyen infrastruktúrai elem és erőforrás definiálható
-        emberek számára is értelmezhető nyelven.\cite{terraform} Ezen megvalósítások, verziózhatóak, disztributálhatóak és bármikor újrafelhasználhatóak.
+        emberek számára is értelmezhető nyelven\cite{terraform} .Ezen megvalósítások, verziózhatóak, disztributálhatóak és bármikor újrafelhasználhatóak.
         Segítségével az alkalmazás minden életszakasza könnyűszerrel menedzselhető, ugyanitt maga az egész folyamat rendkivül könnyen automatizálható.
         
         \subsection{Terraform működése}
@@ -139,7 +139,7 @@
         A rendszer cloud-oldali erőforrásai egyetlen Google Cloud Projektbe szervezett infrastruktúrán futnak, amelynek egyedi azonosítója \texttt{printermonitor-488112}.
         Az összes felhőszolgáltatás — az Artifact Registry-től a Vertex AI végpontig, a Cloud Function-öktől a Firestore adatbázisig — ezen a projekten belül van definiálva és menedzselve.
         A Google Cloud Platform (GCP) választásának fő indoka az volt, hogy egységes ökoszisztémát biztosít a gépi tanulási pipeline-hoz: a Vertex AI natívan integrálódik a Pub/Sub üzenetsorral,
-        a Cloud Functions-szel és az Artifact Registry-vel, minimalizálva az integrációs komplexitást.\cite{gcp}
+        a Cloud Functions-szel és az Artifact Registry-vel, minimalizálva az integrációs komplexitást\cite{gcp}.
         Az erőforrások számlázása és a költségvetési riasztások szintén ezen a projekten belül vannak konfigurálva, lehetővé téve a kiadások szoros nyomon követését.
 
         \subsection{Vertex AI végpont}
@@ -170,22 +170,29 @@
             aktiválhatja az Alert-managert szügség esetén
 
             \subsubsection{sa-alert-manager}
+            \begin{sloppypar}
             A figyelmeztetés kezelésért felelő, egyaránt az anomáliák észlelésekor, és a költségvetés meghaladásakor. Jogosultságai: \texttt{datastore.user}, \texttt{firebase.admin},
             \texttt{eventarc.eventReceiver}, \texttt{pubsub.subscriber}, \texttt{run.invoker}.
-            
+            \end{sloppypar}
+
             \subsubsection{sa-cicd}
+            \begin{sloppypar}
             Mivel az, hogy a terraform infrát mi kézzel szerkesszük nem egy jó praktika, így ehhez egy autómatizált github akciót használunk, ezzel szervíz pont ennek kezeléséért felelős.
             Jogosultságai: \texttt{artifactregistry.writer}, \texttt{pubsub.admin}, \texttt{editor}, \texttt{iam.serviceAccountUser}
-           
+            \end{sloppypar}
             \subsubsection{Vertex AI agent}
+            \begin{sloppypar}
             A Vertex AI endpoint a \texttt{judge} (bíró) Docker konténer futtatásáért felelős. Jogosultságai:
             \texttt{pubsub.publisher} a \texttt{detections-out} csatornán.
+            \end{sloppypar}
 
             \subsubsection{Pub/Sub agent}
+            \begin{sloppypar}
             A Pub/Sub csatornák menedzselésére szolgál. Jogosultságai: \texttt{iam.serviceAccountTokenCreator}.
+            \end{sloppypar}
 
         \subsection{Pub/Sub Topics}
-        A Google Cloud Pub/Sub egy aszinkron üzenetközvetítő szolgáltatás, amely lehetővé teszi az alkalmazáskomponensek közötti laza csatolású kommunikációt.\cite{pubsub}
+        A Google Cloud Pub/Sub egy aszinkron üzenetközvetítő szolgáltatás, amely lehetővé teszi az alkalmazáskomponensek közötti laza csatolású kommunikációt\cite{pubsub}.
         A rendszer három darab pub/sub csatornát használ, melyek a következők: \texttt{frames-in}, mely a még nyers képkockákat továbbítja a pi-től a Vertex AI végpont felé.
         A \texttt{detections-out}, mely a Vertex AI végpont által észlelt anomáliák eredményét továbbítja a dashboard felé, és a \texttt{budget-notifications}, mely figyelmeztet minket
         amennyiben átléptük a kiszabott költségvetést.
@@ -194,7 +201,7 @@
 
         \subsection{Google Cloud Függvények}
         A rendszer három Cloud Function (Gen2) példányt alkalmaz, amelyek Pub/Sub eseményekre triggerelődnek és kiszolgáltatás nélkül,
-        skálázhatóan futnak.\cite{gcp} Mindhárom függvény az \texttt{sa-alert-manager} illetve \texttt{sa-dispatcher} service account jogosultságaival rendelkezik.
+        skálázhatóan futnak.Mindhárom függvény az \texttt{sa-alert-manager} illetve \texttt{sa-dispatcher} service account jogosultságaival rendelkezik.
 
             \subsubsection{Dispatcher}
             A Dispatcher hidat képez az edge eszköz és a Vertex AI végpont között. A \texttt{frames-in} Pub/Sub csatornáról kap üzenetet,
@@ -225,40 +232,42 @@
         Az adatbáziskezelő rendszereknek két nagy fajtáját különböztetünk meg, a relációs adatbázisokat, és a nem relációs avagy NoSQL (Not only SQL) adatbázisokat.
         A fő különbség , hogy a reláciiós adatbázisokban az adatok táblákba rendezettek, és köztük jól meghatározott kapcsolatok vannak. Viszont a NoSql adatbázisokban az 
         adatok úgynevezett dokumentumokban vannak eltárolva, melyek szerkezete sokkal rugalmasabb és nem igényel előre meghatározott sémát. Mivel a projekt főként json formátumú
-        adatokkal dolgozik, így a NoSQL adatbázisok sokkal jobban megfelelnek a céljainknak, és a Firestore egy igen népszerű és megbízható választás ezen a téren.\cite{firestore}
+        adatokkal dolgozik, így a NoSQL adatbázisok sokkal jobban megfelelnek a céljainknak, és a Firestore egy igen népszerű és megbízható választás ezen a téren\cite{firestore}.
 
         A rendszer összesen három Firestore kollekciót használ:
 
-        Az \texttt{alerts} kollekció tárolja a detektált anomáliák bejegyzéseit. Mezői: \texttt{camera\_id} (melyik kamera észlelte),
-        \texttt{detections[]} (a hibák tömbje: név + konfidencia + bounding box), \texttt{timestamp} (mikor történt a detekció),
-        \texttt{seq} (a képkocka szekvenciaszáma, amelyet a \texttt{frame-extractor} biztosít) és \texttt{created\_at} (mikor került be a bejegyzés).
-        A dashboardon való hatékony keresést egy kompozit index segíti: \texttt{camera\_id ASC} + \texttt{timestamp DESC},
-        azaz kamera szerint növekvő, időbélyeg szerint csökkenő sorrendben.
+        \begin{itemize}
+            \item Az \texttt{alerts} kollekció tárolja a detektált anomáliák bejegyzéseit. Mezői: \texttt{camera\_id} (melyik kamera észlelte),
+            \texttt{detections[]} (a hibák tömbje: név + konfidencia + bounding box), \texttt{timestamp} (mikor történt a detekció),
+            \texttt{seq} (a képkocka szekvenciaszáma, amelyet a \texttt{frame-extractor} biztosít) és \texttt{created\_at} (mikor került be a bejegyzés).
+            A dashboardon való hatékony keresést egy kompozit index segíti: \texttt{camera\_id ASC} + \texttt{timestamp DESC},
+            azaz kamera szerint növekvő, időbélyeg szerint csökkenő sorrendben.
 
-        Az \texttt{alert\_cooldowns} kollekció az e-mail értesítések visszatartási idejét kezeli kameránként,
-        megakadályozva a riasztás-özönt rövid időn belül ismétlődő anomáliák esetén.
+            \item Az \texttt{alert\_cooldowns} kollekció az e-mail értesítések visszatartási idejét kezeli kameránként,
+            megakadályozva a riasztás-özönt rövid időn belül ismétlődő anomáliák esetén.
 
-        A \texttt{budget\_alerts} kollekció a GCP költségvetési riasztásokat naplózza, beleértve a felhasznált összeget,
-        a beállított küszöböt és az esemény időbélyegét.
+            \item A \texttt{budget\_alerts} kollekció a GCP költségvetési riasztásokat naplózza, beleértve a felhasznált összeget,
+            a beállított küszöböt és az esemény időbélyegét.
+        \end{itemize}
 
 
         \subsection{Konténer képek}
         A Vertex AI végponton futó detekciós logika egy egyedi Docker konténer képbe (image) van csomagolva, melynek neve \texttt{judge}.
         Ez az image egy Python scriptet tartalmaz, amely induláskor betölti a betanított YOLOv8 modellt, majd várakozik a bejövő Pub/Sub üzenetekre.
         Egy üzenet érkezésekor kicsomagolja a base64-kódolt JPEG képkockát, elvégzi rajta az objektumdetekciót, majd az eredményt — a detektált hibaosztályokat és azok konfidenciaértékeit —
-        visszapublikálja a \texttt{detections-out} Pub/Sub csatornára.\cite{vertexai_custom_container}
+        visszapublikálja a \texttt{detections-out} Pub/Sub csatornára\cite{vertexai_custom_container}.
         Az image tárolása a Google Artifact Registry-ben történik, verziózva a commit SHA alapján.
         Minden módosítás esetén a \texttt{docker-judge.yml} GitHub Action automatikusan újrabuildi és feltölti a friss image-t, ahonnan a Vertex AI végpont azt lehúzza és futtatja.
 
         \begin{figure}[H]
             \centering
-            {\includegraphics[width=0.8\textwidth]{figures/images/literature/judge_cicd_pipeline.jpg}}
+            {\includegraphics[width=\textwidth]{figures/images/literature/judge_cicd_pipeline.jpg}}
             \caption{A \texttt{judge} konténer image életciklusa}
         \end{figure}
 
     \section{Dashboard}
     A rendszer felhasználói felülete egy egyoldalas webalkalmazás (Single Page Application), melyet a Firebase Hosting platform szolgál ki,
-    így külön szerver üzemeltetése nélkül érhető el a böngészőből.\cite{firebase_hosting}
+    így külön szerver üzemeltetése nélkül érhető el a böngészőből\cite{firebase_hosting}.
     Az alkalmazás két fő funkciót lát el párhuzamosan.
 
     Egyrészt valós időben jeleníti meg a három kamera videofolyamát WebRTC technológia segítségével,
@@ -287,7 +296,7 @@
 
     \section{Github Action Workflows}
     A projekt folyamatos integrációját és automatizált kitelepítését (CI/CD) két GitHub Action workflow biztosítja,
-    melyek a megfelelő kódváltozásra automatikusan lefutnak, csökkentve a manuális beavatkozás szükségességét és az emberi hibák esélyét.\cite{github_actions}
+    melyek a megfelelő kódváltozásra automatikusan lefutnak, csökkentve a manuális beavatkozás szükségességét és az emberi hibák esélyét\cite{github_actions}.
 
         \subsection{Terraform lépések automatizálása}
         Ez a workflow a cloud infrastruktúra változtatásait kezeli automatikusan.
@@ -295,7 +304,7 @@
         Merge eseményre — a \texttt{main} ágra — a workflow elvégzi a tényleges infrastruktúra módosítást a GCP-n.
 
             \subsubsection{Konfigurációs ellenőrzés-Chekov}
-            A Checkov egy nyílt forráskódú statikus elemző eszköz, amely Terraform konfigurációkat vizsgál ismert biztonsági problémák és rossz praktikák szempontjából.\cite{checkov}
+            A Checkov egy nyílt forráskódú statikus elemző eszköz, amely Terraform konfigurációkat vizsgál ismert biztonsági problémák és rossz praktikák szempontjából\cite{checkov}.
             Futtatása pull request esetén kötelező lépés: amennyiben magas súlyosságú problémát talál — például nyilvánosan elérhető storage bucket vagy nem megfelelő IAM konfiguráció —,
             a workflow megakadályozza a merge-t. Ez biztosítja, hogy a fejlesztés során se kerülhessen sérülékeny infrastruktúra a produkcióba.
 
@@ -312,7 +321,7 @@
 
         \begin{figure}[H]
             \centering
-            {\includegraphics[width=0.8\textwidth]{figures/images/literature/github_actions_cicd.jpg}}
+            {\includegraphics[width=\textwidth]{figures/images/literature/github_actions_cicd.jpg}}
             \caption{A CI/CD pipeline lépései}
         \end{figure}
 

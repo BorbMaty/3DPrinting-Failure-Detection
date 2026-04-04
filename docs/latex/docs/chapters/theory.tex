@@ -1,18 +1,10 @@
 \section{3D nyomtatásról}
-    Mi is az additív gyártás, tömören azon folyamatokat hívjuk így melyek során egy darabot
-    rétegről rétegre készítünk el, ellentéte a szubsztraktív gyártás, melynek során a darabot, egy szolid
-    blokkból való elvéséssel állítjuk elő.
-    A 3D nyomtatás maga egy  addítív gyártási folyamat mely CAD vagy digitális 3D modellt épít fel
-    különböző nyersagokat felhasználva, 3D nyomtatók segítségével. A folyamat maga egy 3D modellel kezdődik,
-    melyet úgynevezett szeletelő programok segítségével, akár több száz vagy ezer egymással párhuzamos szeletre osztunk.
-    A szoftver ezután a szeletelt modellt G-kóddá alakítja, mely utasítások sorozatát tartalmazza a 3D nyomtató számára.
-    A 3D nyomtató ezek alapján építi fel majd a darabot. Ma a legelterjedtebb 3D nyomtató fajták az FDM (Fused Deposition Modelling)
-    ezek a legismertebbek és a legelterjedtebbek a világon, működése a nyersanyagként használt műanyag megolvasztásán és annak vékony 
-    szállá extrúdáláson alapul. Egy kicsit komplexebb nyomtató fajta az SLA (Stereolithography) nyomtatók, ezek nyersanyagként
-    speciális gyantát használnak, melyeket precízen irányított lézersugarak segítségével szilárdítanak meg.
-    Ezen nyomtatók rendkívűli részletességre képesek, és nagyon precízek, viszont a darabokkal rengeteg utómunka van. Megemlíteném még
-    A polyjet, binder jet, és a fémnyomtatásra használt, DMLS/SLM technológiákat. A dolgozat elkészítése során FDM 
-    nyomtatókon előforduló hibákat tanulmányoztam, innentől kezdve csak velük foglalkozunk.\\ 
+
+Az additív gyártás olyan gyártási folyamatok összefoglaló neve, amelyek során az elkészítendő darabot rétegről rétegre építjük fel. Ez alapvetően szemben áll a szubsztraktív gyártással, amelynek során az alkatrészt egy szolid alapanyagból, anyageltávolítással -- például marással vagy esztergálással -- állítják elő.
+
+A 3D nyomtatás az additív gyártás egyik legismertebb megvalósítása: egy digitális CAD-modellből kiindulva, számítógép vezérlésével, rétegről rétegre építi fel a kívánt tárgyat. A folyamat első lépése a digitális modell előkészítése: egy ún. szeletelőprogram a háromdimenziós geometriát egymással párhuzamos, vékony szeletekre bontja, majd ezekből G-kódot generál -- ez az utasítássorozat irányítja a nyomtató mozgását és anyagadagolását. A nyomtató a G-kód alapján, rétegenként rakja fel az anyagot, amíg a darab el nem készül.
+
+A piacon számos 3D nyomtatási technológia érhető el, amelyek eltérő alapanyagokat és működési elveket alkalmaznak. A legelterjedtebb az \textbf{FDM} (Fused Deposition Modelling), amelynek során egy hőre lágyuló műanyag filamentet olvasztanak meg és extrudálnak vékony szálként a tárgyasztalra. Az \textbf{SLA} (Stereolithography) nyomtatók folyékony fotopolimer gyantát szilárdítanak meg precízen irányított lézersugárral; rendkívül finom részletek nyomtatására alkalmasak, ugyanakkor az elkészült darabok jelentős utómunkát igényelnek. Emellett megemlítendők a \textbf{PolyJet}, \textbf{Binder Jetting}, valamint a fémnyomtatásban alkalmazott \textbf{DMLS/SLM} technológiák is. Jelen dolgozat az FDM nyomtatók üzemeltetése során felmerülő hibákkal foglalkozik, ezért a továbbiakban kizárólag ezzel a technológiával foglalkozunk.
 
     \begin{figure}[H]
         \centering
@@ -34,8 +26,7 @@
 
     \subsection{Nyersanyagok}
 
-        Az FDM nyomtatók nyersanyaga a filament, de felhasználási módtól függetlenül, több anyagot különböztetünk meg.
-        Mindegyik anyagnak megvannak a maga tulajdonságai amik alapján kiválaszthatjuk a számunkra megfelelőt.\\
+        Az FDM nyomtatók nyersanyaga a filament. A felhasználási igényektől függően számos anyagfajta áll rendelkezésre, mindegyik eltérő mechanikai, hőtani és kémiai tulajdonságokkal rendelkezik \cite{all3dp_filaments}.
 
         \begin{figure}[H]
             \centering
@@ -44,52 +35,33 @@
         \end{figure}
         \footnotetext{\textit{Fotó}:\url{https://all3dp.com/1/3d-printer-filament-types-3d-printing-3d-filament/}}
 
-        \subsubsection{PLA-Polylactic acid}
+        \subsubsection{PLA – Politejsav}
 
-        A PLA legelterjedtebb filament a 3D nyomtatással foglalkozók körében. Ezen nyersanyag az egyik legkörnyezetbarátabb, hiszen
-        megújuló, leggyakrabban kukorica keményítőből, cukornádból, tápiókából vagy más szénhidrátokban gazdag
-        növényből állítják elő. Viszont nagyon fontos megjegyezni, hogy a közhiedelemmel ellentétben újrahasznosítása nem olyan egyszerű,
-        csakis ipari körülmények között valósítható meg mivel magas hőt, páratartalmat és mikrobiológiai aktivítást igényel, ha 
-        ezen körülmények nem teljesülnek úgyanolyan káros mint bármilyen más műanyag a szeméthegyeken.
-        PLA-val nyomtatni nem okoz nagy fejtörést, olvadáspontja alacsonyabb, mint más filamenteknek, mechanikai ereje a közepes kategóriába sorolható
-        rugalmassága alacsony, színe a gyártási folyamatnak köszönhetően bármilyen lehet. Gyenge pontjai, a magas hőmérséklet és páratartalom és az UV sugárzásnak való kitettség.\\
+        A PLA (Politejsav, angolul: \textit{Polylactic Acid}) a legelterjedtebb filament a hobbi- és félipari 3D nyomtatás területén. Megújuló alapanyagokból, leggyakrabban kukoricakeményítőből, cukornádból vagy tápióka gyökérből állítják elő \cite{all3dp_filaments}. Fontos megjegyezni, hogy biológiai lebomlása kizárólag ipari körülmények között valósítható meg, ahol megfelelő hő, páratartalom és mikrobiológiai aktivitás biztosított; e feltételek hiányában a PLA ugyanolyan környezeti terhelést jelent, mint bármely más műanyag. Olvadáspontja alacsonyabb más filamentekhez képest, mechanikai szilárdsága közepes kategóriába sorolható, rugalmassága alacsony. Hátrányai közé tartozik a magas hőmérséklettel és páratartalommal, valamint az UV-sugárzással szembeni érzékenysége.
 
-        \subsubsection{ABS-Acrylonitrile butadiene styrene}
-        Az ABS már a hobbiisták körében nem annyira elterjedt nyersanyag, mivel nyomtatása során, mérgező gázok keletkezhetnek,
-        az ezek által okozott kár viszont megfelelő szellőztetéssel teljes mértékben elkerülhető. Az iparban nagyon szívesen nyomtatnak vele, hiszen
-        az anyag tulajdonságai, mérsékelten jobbak mint a PLA-é, bár nyomtatása már nem olyan egyszerű, mert az anyag nagyon hajlamos a torzulása, ha ingadozik a hő a 
-        nyomtatótérben. Mechanikai keménysége magas és rugalmassága is jobb mint a pla-é. Az ABS-ből készült darabok időtállóak, nem kezdi ki őket 
-        sem a nedvesség, mintsem az uv sugárzás. Érdekesség képben kiemelném, hogy a legó kockák nagyrésze szintén ABS-ből készült.
+        \subsubsection{ABS – Akrilnitril-butadién-sztirol}
 
-        \subsubsection{PETG-Polyethylene Terephthalate Glycol}
-        A PETG filament nagyszerű módon ötvözi az erőt flexibilitást, és a felhasználó barátságot, mondhatni ő az aranyközépút.
-        Az anyag a műanyagüvegekhez is használt PET kis glycollal megfűszerezve, mely hatására kevésbé lesz törékeny és a minősége is javul.
-        Mechanikai ereje igen magas és rugalmassága szintén közepes szintre sorolható. Az anyag rendkivűl ellenálló a nedvességgel szemben és
-        kevésbé hajlamos a torzulásra. Szárítására különösen oda kell figyelni.\\
+        Az ABS (Akrilnitril-butadién-sztirol, angolul: \textit{Acrylonitrile Butadiene Styrene}) a hobbi felhasználók körében kevésbé elterjedt, mivel nyomtatása során mérgező gázok keletkezhetnek; megfelelő szellőztetés mellett azonban ez a kockázat teljes mértékben kezelhető \cite{all3dp_filaments}. Az iparban előszeretettel alkalmazzák, mivel mechanikai tulajdonságai összességében felülmúlják a PLA-ét. Nyomtatása igényesebb, mivel az anyag erősen hajlamos a torzulásra, amennyiben a nyomtatótérben hőingadozás lép fel. Mechanikai keménysége magas, rugalmassága jobb a PLA-énál. Az ABS-ből készült alkatrészek időtállóak, ellenállnak a nedvességnek és az UV-sugárzásnak egyaránt.
 
-        \subsubsection{TPU-Thermoplastic Polyurethane}
-        
-        A TPU egy rendkivűl rugalmas, gumiszerű nyersanyag, mely a nyúlánkságáról keménységéről és becsapódás ellenálló képességőről híresült el.
-        A szilárd filamentekkel szemben a TPU, hajlítható, nyújtható, összenyomható, és képess ütések elnyelésére. Mechanikai keménysége kicsit kisebb, viszont ezzel
-        ellenben rugalmassága rendkívűl magas. Tökéletes olyan darabok nyomtatására melyek folyamatos használat alatt állnak majd, például szíjak, abroncsok és társaik.
-        Az anyag hajlamos a szálazásra, nyúlánksága miatt, így sokkal lassabban kell nyomtatni mint a szilárd társait, a nyomatót nagyon gyakran hozzá kell majd kalibrálni.\\
+        \subsubsection{PETG – Glikolizált polietilén-tereftalát}
 
-        \subsubsection{Nylon-Polyamide}
+        A PETG (Glikolizált polietilén-tereftalát, angolul: \textit{Polyethylene Terephthalate Glycol}) a felhasználóbarátság, a mechanikai szilárdság és a rugalmasság kedvező egyensúlyát kínálja \cite{all3dp_filaments}. Az anyag alapja a műanyag palackok gyártásánál is alkalmazott PET, amelyet glikollal módosítanak; ennek eredményeképpen az anyag kevésbé törékennyé és minőségileg stabilabbá válik. Mechanikai szilárdsága magas, rugalmassága közepes. Rendkívül ellenálló a nedvességgel szemben, és kevésbé hajlamos a torzulásra más filamentekhez képest. Tárolása és szárítása gondosságot igényel.
 
-        A Nylon, mint nyersanyag főként iparban használatos, nagyszerű ereje és tartóssága miatt gyakran a biztos választás.
-        A nylon nyomtatása a fúvókák, és a zárt nyomtató terek fejlesztésével vált elérhetővé, melyekben nagyobb kontrol van a nedvesség
-        tartalom és a hőmérséklet fölött. Mechanikai keménysége elsőosztályú, rugalmassága kiváló, tartóssága pedig messze felülmúlja társaiét.\\
+        \subsubsection{TPU – Termoplasztikus poliuretán}
 
-        \subsubsection{PC- Polycarbonate}
-        A policarbonate amellet, hogy a mai napig a világon a legkeményebb és legtartósabb filament címét tudhatja magáénak,
-        rendkivűl ellenálló mint a hőnek mint a nedvességnek. Nyomtatása döcögős hobbiisták számára ugyanis nagyon sok hőt igényel, a zökkenőmentes
-        nyomtatáshoz a fúvókának a 260-310°C tartományban kell lennie, és a tárgyasztalt zár térbe kell telepíteni, ezzel is gátolva a hőingadozást.\\
+        A TPU (Termoplasztikus poliuretán, angolul: \textit{Thermoplastic Polyurethane}) egy rendkívül rugalmas, gumiszerű filament, amely ruganyosságáról, keménységéről és ütésálló képességéről ismert \cite{all3dp_filaments}. A merev filamentekkel ellentétben hajlítható, nyújtható és összenyomható, miközben képes az ütések elnyelésére. Mechanikai keménysége a merev anyagokhoz képest alacsonyabb, rugalmassága azonban kiemelkedően magas. Folyamatos igénybevételnek kitett alkatrészek – például szíjak és tömítések – nyomtatására különösen alkalmas. Ruganyos tulajdonsága miatt az anyag hajlamos a szálazásra, ezért nyomtatási sebessége alacsonyabb a szilárd anyagokénál, és az adagoló rendszer kalibrálása fokozott figyelmet igényel.
 
-        \subsubsection{Egyébb nyersanyagok}
-        A fent említettek mellett, persze ma már mégtöbb filament áll rendélkezésünkre, viszont ezek a dolgozat szempontjából nem annyira relevánsak, mivel a fent
-        tárgyalt variánsok keverékei. Ilyen például, az ún selyem PLA, melynek mechanikai keménysége alacsonyabb, viszont szebb, fényesebb textúrával rendelkezik, tökéletes
-        Olyan darabok nyomtatására, melyeknél az esztétika fontosabb mint a mechanikai felhasználás, például a dísztárgyak. Az Wood-PLA, egy olyan PLA variáns mely fa darabkákkal ötvözött,
-        a nyomtatás után a darab fás tapintásnak örvend majd, ebből létezik fémmel ötvözött variáns is.
+        \subsubsection{Nylon – Poliamid}
+
+        A Nylon (Poliamid, angolul: \textit{Polyamide}) elsősorban ipari alkalmazásokban elterjedt filament, kiemelkedő szilárdsága és tartóssága miatt \cite{all3dp_filaments}. Nyomtathatósága a fejlettebb fúvókatechnológiák és a zárt nyomtatóterek elterjedésével vált széles körben elérhetővé, amelyek jobb kontrollt biztosítanak a nedvességtartalom és a hőmérséklet felett. Mechanikai szilárdsága elsőrendű, rugalmassága kiváló, tartóssága felülmúlja a legtöbb más filamentét. Erősen higroszkópikus anyag, ezért tárolása és felhasználás előtti szárítása elengedhetetlen.
+
+        \subsubsection{PC – Polikarbonát}
+
+        A polikarbonát (angolul: \textit{Polycarbonate}) a rendelkezésre álló filamentek közül kiemelkedő mechanikai szilárdságáról és tartósságáról ismert, emellett rendkívül ellenálló mind a hővel, mind a nedvességgel szemben \cite{all3dp_filaments}. Nyomtatása jelentős technikai követelményeket támaszt: a zökkenőmentes feldolgozáshoz a fúvóka hőmérsékletének a 260–310\,°C tartományban kell lennie, a tárgyasztalt pedig zárt nyomtatótérbe kell elhelyezni a hőingadozás megakadályozása érdekében.
+
+        \subsubsection{Egyéb nyersanyagok}
+
+        A fentieken túl számos egyéb filamenttípus is elérhető, amelyek jellemzően az ismertetett alapanyagok keverékei vagy módosított változatai \cite{all3dp_filaments}. Ilyen például a selyem PLA, amelynek mechanikai szilárdsága alacsonyabb, azonban fényesebb, selymes textúrájú felületet eredményez, így esztétikai célú nyomtatásra – például dísztárgyak készítésére – különösen alkalmas. A fa-PLA fatörmelékkel kevert PLA-variáns, amely nyomtatás után fás tapintású felületet kölcsönöz a darabnak; hasonló elven készülnek a fémrészecskékkel kevert fém-PLA kompozitok is.
 
     \begin{figure}[H]
         \centering
@@ -98,40 +70,31 @@
     \end{figure}
 
         \subsection{Felmerülő hibák és limitációk}
-        A 3D nyomtatási folyamat során rengeteg hiba felmerülhet. mely több okból is keletkezhet,
-        a nedves anyagtól, a rossz kallibrációig, vagy akár komoly hardver hibáig is. Beszéljünk
-        egy kicsit ezen hibákról.
 
-            \subsubsection{Stringing- Avagy szálazás}
-                
+        A 3D nyomtatási folyamat során számos hiba léphet fel, amelyek eredete a nedves alapanyagtól a helytelen kalibrációig, illetve komolyabb hardveres meghibásodásig terjedhet \cite{bambu_wiki}.
+
+            \subsubsection{Stringing – Szálazás}
+
                 \begin{figure}[H]
                     \centering
                     \rotatebox{270}{\includegraphics[width=0.6\textwidth]{figures/images/literature/string.jpg}}
                     \caption{Szálazás a nyomtatás végén}
                 \end{figure}
 
-                Ezen hiba fő jellegzetessége apró szinte áttetsző szálak megjelenése a darab élei között, ennek oka hogy
-                a fúvóka utazás közben olvadt műanyagot húz a levegőben amíg A pontból B pontba ér.
-                Legfőbb oka általában
-                nem megfelelően kiszárított filament használata a nyomtatáshoz. Ezen szálak utómunkával eltávollíthatóak, de nem garantált, hogy nyomuk
-                teljesen eltávollítható. A hibát még okozhatja, nem megfelelő visszahúzás érték, túl forró fúvóka, és mocskos fúvóka is.
+                A szálazás fő jellegzetessége apró, szinte áttetsző szálak megjelenése a darab elemei között. A jelenség oka, hogy a fúvóka mozgás közben olvadt anyagot húz maga után az egyik pozícióból a másikba való áthaladás során. Leggyakoribb kiváltó oka a nem megfelelően kiszárított filament használata \cite{bambu_stringing}. Az így keletkező szálak utómunkával eltávolíthatóak, azonban nem garantált, hogy nyomuk teljes mértékben megszüntethető. Emellett helytelen visszahúzási érték, túl magas fúvóka-hőmérséklet vagy szennyezett fúvóka is okozhatja a hibát.
 
-
-            \subsubsection{Warping- Avagy eltorzulás}
+            \subsubsection{Warping – Vetemedés}
 
                 \begin{figure}[H]
                     \centering
                     {\includegraphics[width=0.6\textwidth]{figures/images/literature/curling_corner.jpg}}
-                    \caption[Eltorzult darab]{Eltorzult darab\footnotemark}
+                    \caption[Eltorzult darab]{Vetemedett darab\footnotemark}
                 \end{figure}
                 \footnotetext{\textit{Fotó}:\url{https://wiki.bambulab.com/en/knowledge-sharing/printed-model-warping}}
 
-            Eltorzulás legtöbbször akkor jelentkezik, amikor egy darab alján éles szögek találhatóak, 
-            például négyzet, vagy egyébb sokszög. Fontos beavatkozó viszont a tárgyasztal hője, tisztasága
-            is a megfelelő tapadás fenttartásához. A hiba maga kiküszöbőlhető egy úgynevezett skirt, 
-            avagy szoknya alkalmazásával a szeletelőben, mely búnusz tapadást biztosít a sarkakon.
+            Az eltorzulás legtöbbször olyan darabok esetén jelentkezik, amelyek alján éles szögek találhatóak, például négyszög vagy más sokszög alapú geometriáknál \cite{bambu_warping}. A tárgyasztal hőmérséklete és tisztasága szintén meghatározó tényező a megfelelő tapadás fenntartásában. A hiba megelőzhető a szeletelőprogramban alkalmazott ún. \textit{brim} (perem) elemmel, amely bónusz tapadási felületet biztosít a sarokpontoknál.
 
-            \subsubsection{Layer shift-Avagy réteg eltolódás}
+            \subsubsection{Layer shift – Réteg-eltolódás}
 
                 \begin{figure}[H]
                     \centering
@@ -140,13 +103,9 @@
                 \end{figure}
                 \footnotetext{\textit{Fotó}:\url{https://wiki.bambulab.com/en/knowledge-sharing/layer-shifts}}
 
-            A nyomtatott rétegek eltolódása végzetes hiba a darab számára. Főként akkor jelenik meg amikor 
-            eltérés van a G-kódban található koordítnáta és a fúvóka világi koordínátái között. Három fő oka
-            van, túl nagy nyomtatási sebesség, nem megfelelő Z-offset mely miatt a fúvóka beleakadhat a darabba
-            ezzel koordínáta különbséget előídézve, vagy a nyomtatót ért fizikai trauma, esetleg laza sínek 
-            vagy merevítők.
+            A réteg-eltolódás a nyomtatott darab számára végzetes hiba \cite{bambu_layershift}. Jellemzően akkor lép fel, amikor eltérés keletkezik a G-kódban tárolt koordináta és a fúvóka tényleges térbeli koordinátái között. Három fő kiváltó oka azonosítható: túl nagy nyomtatási sebesség; helytelen Z-offset érték, amely miatt a fúvóka beleakadhat a darabba és koordinátakülönbséget idézhet elő; valamint a nyomtatót ért külső fizikai behatás, illetve laza mozgósínek vagy merevítők.
 
-            \subsubsection{Under extrusion- Avagy alul extrúdálás}
+            \subsubsection{Under extrusion – Alul-extrúdálás}
 
                 \begin{figure}[H]
                     \centering
@@ -165,16 +124,10 @@
                 \footnotetext{\textit{Fotó}:\url{https://wiki.bambulab.com/en/filament-acc/filament/print-quality/under-extrusion}}
                 \stepcounter{footnote}
                 \footnotetext{\textit{Fotó}:\url{https://wiki.bambulab.com/en/filament-acc/filament/print-quality/under-extrusion}}
-    
-            Ezen hibának két külön fajtáját különböztetjük meg, a teljes illetve a lokális alul extrúdálást.
-            Ezen hiba okai lehetnek mind hardveres, de előokozhatja nem megfelelő szeletelés is. 
-            Főbb előidéző okok közé tartozik, hogyha, eldugul a ptfe cső, vagy idegen test kerül bele, beakadt
-            a filament tekercs és nem jút elég a fúvókához, fogaskerék probléma, vagy részleges dugúlás a fúvókában 
-            vagy a hotendben. Amennyiben a problémát szoftveres ok váltja ki a Maximum Volumetric speed illetve Flow
-            ratio nevű beállításokkal van a probléma. A mai modern nyomtatók már fel vannak szerelve autómatikus adagolás
-            kallibrációval, ezzel segítve a felhasználót.
 
-            \subsubsection{Over extrusion- Avagy felül extrúdálás}
+            Az alul-extrúdálásnak két fajtája különböztethető meg: a teljes és a lokális alul-extrúdálás \cite{bambu_underextrusion}. A hiba eredete lehet hardveres és szoftveres egyaránt. Hardveres okok közé tartozik a PTFE-cső eldugulása vagy idegen test bejutása, a filamenttekercs beakadása miatti anyaghiány, fogaskerék-probléma, illetve részleges dugulás a fúvókában vagy a hotendben. Szoftveres oldalon a helytelen \textit{Maximum Volumetric Speed} vagy \textit{Flow Ratio} beállítás válthatja ki. A korszerű nyomtatók automatikus adagolókalibráló rendszerrel rendelkeznek, amely segít megelőzni e hibát.
+
+            \subsubsection{Over extrusion – Felül-extrúdálás}
 
                 \begin{figure}[H]
                     \centering
@@ -183,10 +136,9 @@
                 \end{figure}
                 \footnotetext{\textit{Fotó}:\url{https://www.3dsourced.com/guides/3d-print-over-extrusion/}}
 
-            Ugyanazon probléma mint az alul extrúdálás, egy annyi csavarral, hogy itt nem túl kevés anyag jut a 
-            fúvókához hanem pont, hogy túl sok.
+            A felül-extrúdálás az alul-extrúdálással ellentétes jelenség: ebben az esetben a fúvókához a szükségesnél több anyag jut, ami a darab felszínének minőségét rontja és méretbeli pontatlanságot okoz.
 
-            \subsubsection{Nozzle Clog- Avagy fúvóka dugulás}
+            \subsubsection{Nozzle Clog – Fúvóka-dugulás}
 
                 \begin{figure}[H]
                     \centering
@@ -195,27 +147,19 @@
                 \end{figure}
                 \footnotetext{\textit{Fotó}:\url{https://wiki.bambulab.com/en/filament-acc/filament/print-quality/clog}}
 
-            Egy sajnos igen gyakori probléma mely akár a nyomtatónk "életébe" is kerülhet. Legfőbb oka, hogy 
-            a filament amikor a ptfe csövön keresztül a forró kamrába, majd pedig a fúvókába jut nem teljesen 
-            tiszta, kis por vagy egyébb szennyező anyagok is bekerülnek, melyek a fúvóka dugulását okozhatják. 
-            Amennyiben nem vesszük észre hamar az olvadt műanyag felgyülhet a fúvókában és belülről szétfeszíti azt, 
-            ezzel jelentős anyagi kárt okozva.
+            A fúvóka-dugulás az egyik legsúlyosabb következményekkel járó üzemzavar \cite{bambu_clog}. Leggyakoribb oka, hogy a PTFE-csövön és a forró zónán áthaladó filament por vagy egyéb szennyeződés nyomait tartalmazza, amelyek lerakódnak és dugulást okoznak a fúvókában. Amennyiben a hiba nem kerül időben felismerésre, az olvadt anyag felgyűlhet a fúvókában, és belülről mechanikai sérülést okozhat, ezzel jelentős anyagi kárt idézve elő.
 
-            \subsubsection{Foreign object on the printbed- Avagy idegen tárgy a tárgyasztaklon}
+            \subsubsection{Foreign object on the printbed – Idegen tárgy a tárgyasztalon}
 
-            Ezen hiba se nem hardveres se nem szoftveres hanem szimplán a kezelő figyelmetlensége miatt 
-            következik be, akik a tapasztalatomból legtöbbször olyan izgatott a szeletelést követően, 
-            hogy elfelejti ellenőrizni, hogy leürítette-e a tárgyasztalt, vagy csak karbantartás után 
-            nem pakolt el maga után. Az idegen tárgyak a fúvókában és a fejben súlyos anyagi kárt okozhatnak 
-            viszont, hiszen a legtöbb nyomtató nem képes detektálni, ha a tárgyasztal üres vagy sem.
-                
+            Ez a hibatípus nem hardveres és nem szoftveres eredetű, hanem kizárólag a kezelő figyelmetlenségéből ered \cite{bambu_wiki}. Leggyakoribb eset, hogy az előkészítést követően a kezelő elmulasztja ellenőrizni a tárgyasztal állapotát, vagy karbantartás után szerszámot illetve egyéb tárgyat hagy rajta. Az idegen tárgyak súlyos mechanikai kárt okozhatnak a fúvókában és a nyomtatófejben, mivel a legtöbb nyomtató nem rendelkezik a tárgyasztal szabad felületének automatikus érzékelésére alkalmas rendszerrel.
+
                 \begin{figure}[H]
                     \centering
                     {\includegraphics[width=0.6\textwidth]{figures/images/literature/foreign.jpg}}
                     \caption{Figyelmetlenségből a tárgyasztalon hagyott szerszám}
                 \end{figure}
 
-            \subsubsection{First layer not sticking- Avagy az első réteg nem tapad}
+            \subsubsection{First layer not sticking – Az első réteg nem tapad}
 
                 \begin{figure}[H]
                     \centering
@@ -224,20 +168,11 @@
                 \end{figure}
                 \footnotetext{\textit{Fotó}:\url{https://wiki.bambulab.com/en/knowledge-sharing/first-layer-not-sticking}}
 
-            A 3D nyomtatási folyamat során a legfontosabb mozzanat az első réteg, ha ez nem tapad 
-            oda akkor az egész darab kuka, fontos figyelemmel kísérni, amennyiben észrevétlen marad, 
-            az Spagettihez, és rengeteg anyag veszteséggel jár. Főbb okai, ha a tárgyasztal nem megfelelő 
-            tisztaságú, rossz fúvóka tárgyasztal távolság (Z-offset), vagy rossz asztal szintezés. Könnnyen 
-            elkerülhető a megfelelő beállításokkal és a tárgyasztal karban-és tisztán tartásával.
+            Az első réteg megfelelő letapadása a nyomtatási folyamat legkritikusabb mozzanata \cite{bambu_firstlayer}. Amennyiben az első réteg nem tapad a tárgyasztalhoz, a darab elvész és jelentős anyagveszteséggel jár. Főbb kiváltó okai: nem megfelelő tisztaságú tárgyasztal, helytelen fúvóka–tárgyasztal távolság (Z-offset), valamint pontatlan asztalszintezés. Megfelelő beállításokkal és a tárgyasztal rendszeres karbantartásával a hiba könnyen megelőzhető.
 
-            \subsubsection{Spagetti- Avagy az anyag a levegőbe adagolódik}
+            \subsubsection{Spagetti – Az anyag a levegőbe adagolódik}
 
-            Rengeteg oka lehet, de a legfőbb előokozója, ha az első réteg nyomtatási folyamata sikertelennek 
-            bizonyult, a fúvókát ez nem érdekli, ő követi a G-kód által megadott utasításokat és addig nyomja a 
-            levegőbe az anyagot, ameddig a végére nem ér, vagy a kezelő azt meg nem állítja. 
-            Fontos kiemelni, hogy a tapadás elvesztése a nyomtatási folyamat bármely pillanatában bekövetkezhet, 
-            amennyiben nem megfelelő support beállításokat alkamaztunk a szeletelőben, vagy éppen a supportok 
-            engedik el a tárgyasztalt, ezzel védtelenül hagyva a darabot.
+            A spagetti-hiba leggyakoribb előidézője az első réteg sikertelen tapadása \cite{bambu_spaghetti}. Ebben az esetben a nyomtató a G-kódban rögzített utasításokat változtatás nélkül hajtja végre, és a fúvóka a tapadás hiánya ellenére folytatja az anyag adagolását, mindaddig, amíg a nyomtatás befejeződik vagy a kezelő manuálisan leállítja azt. Fontos kiemelni, hogy a tapadás elvesztése a nyomtatási folyamat bármely szakaszában bekövetkezhet, különösen helytelen tartószerkezet-beállítások alkalmazása, vagy a supportok tárgyasztaltól való elválása esetén.
 
                 \begin{figure}[H]
                     \centering
