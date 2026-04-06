@@ -4,11 +4,13 @@
         míg a felhő végzi a gépi tanulás alapú hibadetekciót, az adattárolást és a felhasználói értesítéseket.
         Az adatfolyam iránya: Raspberry Pi → Pub/Sub (\texttt{frames-in}) → Dispatcher Cloud Function → Vertex AI végpont (YOLO inferencia)
         → Pub/Sub (\texttt{detections-out}) → Alert-Manager Cloud Function → Firestore + e-mail értesítés → Dashboard.
+        A teljes rendszer architektúráját a \ref{fig:systemarch}. ábra szemlélteti.
 
                 \begin{figure}[H]
                     \centering
                     {\includegraphics[width=\textwidth]{figures/images/literature/systemarch.jpg}}
                     \caption{A rendszer}
+                    \label{fig:systemarch}
                 \end{figure}
 
 
@@ -30,11 +32,13 @@
         A pi-n systemd szolgáltatásként fut, így az eszköz indításakor automatikusan elindul, emberi beavatkozás nélkül.
         Konfigurációs fájlja definiálja a három kamerastream elérési útját, a kódolási paramétereket, valamint az újracsatlakozási logikát.
         A H264-es kódolású RTSP végpontokat a Cloudflare alagúton keresztül éri el a dashboard, ahol WebRTC formátumban kerülnek megjelenítésre.
+        A stream pipeline teljes folyamatát a \ref{fig:mediamtx}. ábra szemlélteti.
 
         \begin{figure}[H]
             \centering
             {\includegraphics[width=\textwidth]{figures/images/literature/mediamtx_pipeline.jpg}}
             \caption{MediaMTX stream pipeline}
+            \label{fig:mediamtx}
         \end{figure}
 
         \subsection{Képkockák kinyerése}
@@ -258,11 +262,13 @@
         visszapublikálja a \texttt{detections-out} Pub/Sub csatornára\cite{vertexai_custom_container}.
         Az image tárolása a Google Artifact Registry-ben történik, verziózva a commit SHA alapján.
         Minden módosítás esetén a \texttt{docker-judge.yml} GitHub Action automatikusan újrabuildi és feltölti a friss image-t, ahonnan a Vertex AI végpont azt lehúzza és futtatja.
+        A konténer teljes életciklusát — a build fázistól a futtatásig — a \ref{fig:judge}. ábra mutatja be.
 
         \begin{figure}[H]
             \centering
             {\includegraphics[width=\textwidth]{figures/images/literature/judge_cicd_pipeline.jpg}}
             \caption{A \texttt{judge} konténer image életciklusa}
+            \label{fig:judge}
         \end{figure}
 
     \section{Dashboard}
@@ -318,11 +324,13 @@
         Minden olyan push eseményre lefut, amely a \texttt{judge/} könyvtárat érinti — így csak releváns változtatás esetén indul el, nem feleslegesen.
         A workflow lépései sorban: hitelesítés az \texttt{sa-cicd} service account kulcsával, az image buildje, ellátása a commit SHA-val mint egyedi taggel,
         majd feltöltése a Google Artifact Registry-be. Ezt követően a Vertex AI végpont a következő aktiváláskor automatikusan az új image-t fogja használni.
+        A két workflow együttes működését a \ref{fig:cicd}. ábra foglalja össze.
 
         \begin{figure}[H]
             \centering
             {\includegraphics[width=\textwidth]{figures/images/literature/github_actions_cicd.jpg}}
             \caption{A CI/CD pipeline lépései}
+            \label{fig:cicd}
         \end{figure}
 
     \section*{Összefoglalás}
