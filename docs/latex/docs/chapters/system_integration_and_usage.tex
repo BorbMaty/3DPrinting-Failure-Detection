@@ -1,0 +1,138 @@
+\section{A rendszer életciklusa}
+
+Az előző fejezetekben külön-külön kerültek bemutatásra az adatgyűjtés, a modell betanítása és az infrastruktúra egyes komponensei.
+Ez a fejezet azt mutatja be, hogyan illeszkednek ezek a részek egy egységes, üzemelő rendszerré: mi a telepítés sorrendje,
+hogyan indul el a pipeline, és hogyan kerül a betanított modell éles környezetbe.
+
+\section{A betanított modell integrálása}
+
+A betanítási folyamat végén keletkező \texttt{best.pt} súlyfájl a \texttt{judge} Docker konténerbe kerül becsomagolásra.
+A konténer induláskor betölti ezt a fájlt, és az Ultralytics YOLOv8 API-ján keresztül elérhetővé teszi azt
+a Vertex AI végpont HTTP interfészén. A modellcsere folyamata a következő lépésekből áll:
+
+\begin{enumerate}
+    \item Az új \texttt{best.pt} fájlt a \texttt{judge/} könyvtárba másoljuk.
+    \item A \texttt{docker-judge.yml} GitHub Action workflow automatikusan lefut, újrabuildeli a \texttt{judge} image-t,
+          és feltölti az Artifact Registry-be, a commit SHA-val mint egyedi taggel.
+    \item A Vertex AI végpont a következő aktiváláskor az új image-t húzza le és futtatja.
+\end{enumerate}
+
+Ez a folyamat biztosítja, hogy a modell minden frissítése verziókövetett, visszagörgetható és automatizált legyen
+-- kézi szerverhozzáférés nélkül.
+
+\section{Telepítési sorrend}
+
+Az első telepítés során a következő sorrendben kell elvégezni a lépéseket:
+
+\subsection{Cloud infrastruktúra provisioning}
+
+Az infrastruktúra felállítása Terraform segítségével történik. A \texttt{terraform apply} parancs kiadása után
+automatikusan létrejönnek a Pub/Sub topicok, a Cloud Functions, a Vertex AI végpont, a Firestore kollekciók
+és az Artifact Registry repository. Az infrastruktúra változtatásai a \texttt{main} ágra való merge esetén
+a CI/CD pipeline automatikusan alkalmazza -- így a rendszer mindig a konfigurációval összhangban van.
+
+\subsection{A \texttt{judge} konténer telepítése}
+
+A \texttt{judge} Docker image buildelése és Artifact Registry-be való feltöltése szintén automatizált:
+a \texttt{docker-judge.yml} GitHub Action lefuttatja a buildet és a push eseményt, amelyet a Vertex AI végpont
+az első hívásakor automatikusan lehív. A konténer telepítéséhez nincs szükség manuális Docker parancsokra.
+
+\subsection{Az edge eszköz beállítása}
+
+A Raspberry Pi-n az alábbi három systemd szolgáltatást kell egyszeri konfigurációval engedélyezni:
+
+\begin{itemize}
+    \item \textbf{MediaMTX} -- a kamerastream RTSP publikálásáért felelős.
+    \item \textbf{frame-extractor} -- a képkockák kinyeréséért és Pub/Sub-ra való publikálásáért felelős.
+    \item \textbf{cloudflared} -- a Cloudflare alagút fenntartásáért felelős, amelyen keresztül a dashboard eléri az RTSP streameket.
+\end{itemize}
+
+A szolgáltatások az eszköz bekapcsolásakor automatikusan elindulnak, emberi beavatkozás nélkül.
+A \texttt{frame-extractor} konfigurációja (RTSP URL-ek, GCP projekt azonosítója, topic neve) környezeti
+változókon keresztül adható meg, így ugyanaz a konténer különböző nyomtatóállomásokon is újrafelhasználható.
+
+\section{Az üzemelési folyamat}
+
+Miután a rendszer telepítve és elindítva van, a következő folyamat zajlik le automatikusan,
+emberi beavatkozás nélkül (lásd \ref{fig:systemarch}. ábra):
+
+\begin{enumerate}
+    \item A Raspberry Pi-n futó \texttt{frame-extractor} szolgáltatás a három RTSP streamből
+          \textbf{2 képkockát olvas ki másodpercenként} kameránként, átméretezi és JPEG-be tömöríti azokat,
+          majd JSON üzenetként publikálja a \texttt{frames-in} Pub/Sub topicra.
+
+    \item A \textbf{Dispatcher} Cloud Function feliratkozik a \texttt{frames-in} topicra.
+          Minden beérkező üzenetnél a base64-kódolt képkockát a Vertex AI végpont \texttt{/predict} végpontjára
+          továbbítja OAuth2 hitelesítéssel.
+
+    \item A \textbf{Vertex AI végponton} futó \texttt{judge} konténer elvégzi az objektumdetekciót
+          a YOLOv8 modell segítségével, majd az eredményt -- a detektált hibaosztályokat, konfidenciaértékeket
+          és határoló téglalapokat -- visszapublikálja a \texttt{detections-out} topicra.
+
+    \item Az \textbf{Alert-Manager} Cloud Function feldolgozza a detekciós eredményeket.
+          A 35\%-os konfidenciaküszöböt elérő detektálásokat a Firestore \texttt{alerts} kollekcióba írja.
+          Magas prioritású hibák (\texttt{spagetti}, \texttt{not\_sticking}, \texttt{layer\_shift}, \texttt{warping})
+          esetén HTML e-mail értesítést küld a kezelőnek, kameránként 60 másodperces cooldown alkalmazásával.
+
+    \item A \textbf{dashboard} a Firestore \texttt{onSnapshot} listenerén keresztül valós időben jeleníti meg
+          az újonnan érkező riasztásokat, egyidejűleg pedig a Cloudflare alagúton keresztül élőben mutatja
+          a három kamera videofolyamát.
+\end{enumerate}
+
+\section{A dashboard használata}
+
+A webes felület megnyitása után az operátor egyetlen nézetből felügyeli a teljes nyomtatási folyamatot.
+A felület három fő részből áll:
+
+\begin{itemize}
+    \item \textbf{Kamerastream panel} -- a három kamera élő WebRTC videofolyamát jeleníti meg egymás mellett.
+    \item \textbf{Detekciós napló} -- valós időben frissülő táblázat, amely tartalmazza az észlelt hibaosztályt,
+          a konfidenciaértéket, az érintett kamera azonosítóját és az észlelés pontos időbélyegét.
+    \item \textbf{Állapotjelzés} -- magas prioritású hiba esetén a felület piros kerettel jelez (\textit{alerting}
+          állapot); költségvetési küszöb átlépésekor sárga kerettel (\textit{budget-alert} állapot).
+\end{itemize}
+
+\section{Konfigurálhatóság és skálázhatóság}
+
+A rendszer tervezésekor fontos szempont volt, hogy könnyen adaptálható legyen különböző üzemelési körülményekhez.
+
+\subsection{Konfidenciaküszöb}
+
+Az Alert-Managerben beállított 35\%-os konfidenciaküszöb az alkalmazás environment változóján keresztül módosítható.
+Magasabb küszöb kevesebb, de megbízhatóbb riasztást eredményez; alacsonyabb küszöb érzékenyebb, de több fals pozitívot
+is hozhat. Az optimális értéket a 8. fejezetben részletezett tesztelési eredmények alapján lehet majd finomhangolni.
+
+\subsection{Képkockaráta és felbontás}
+
+A \texttt{frame-extractor} \texttt{CAPTURE\_FPS} és \texttt{FRAME\_WIDTH}/\texttt{FRAME\_HEIGHT} paraméterei
+lehetővé teszik a valós idejű terhelés és a Pub/Sub átviteli kapacitás közötti egyensúly megtalálását.
+Gyorsabb nyomtatóknál magasabb fps értékkel érdemes dolgozni; hálózati sávszélesség korlát esetén
+az alacsonyabb JPEG minőség csökkenti az átviteli méretet.
+
+\subsection{Több nyomtatóállomás}
+
+Az architektúra horizontálisan skálázható: további Raspberry Pi egységek és kamerakészletek az egyedi
+\texttt{CAMERA\_IDS} és \texttt{RTSP\_URLS} értékek megadásával csatlakoztathatók a meglévő pipeline-hoz,
+anélkül, hogy a cloud komponenseket módosítani kellene. A Pub/Sub és a Cloud Functions automatikusan skálázódnak
+a megnövekedett üzenetterheléssel.
+
+\subsection{Modellcsere}
+
+Mivel a detekciós modell a \texttt{judge} konténertől elkülönítve, a \texttt{best.pt} fájl cseréjével frissíthető,
+egy jobb modell telepítése nem igényli a teljes infrastruktúra újraépítését. Elegendő az új súlyfájlt
+a \texttt{judge/} könyvtárba helyezni és a GitHub Action workflow-t lefuttatni.
+
+\section{Ismert korlátok}
+
+A jelenlegi implementáció az alábbi korlátokat mutatja:
+
+\begin{itemize}
+    \item A Cloudflare alagút jelenleg ideiglenes (\textit{quick tunnel}) típusú, amely minden Pi-újraindításkor
+          új URL-t kap. Éles üzemeltetéshez állandó (\textit{named tunnel}) konfigurációra van szükség.
+    \item A Vertex AI végpont aktív használaton kívül is fenntart egy minimális példányt, amely napi
+          $\approx$37 USD folyamatos üzemelési költséggel jár. Alacsony intenzitású monitorozáshoz
+          a \textit{scale-to-zero} beállítás alkalmazása csökkentheti a kiadásokat, de növeli a hideginduló
+          késleltetést (\textit{cold start}).
+    \item A jelenlegi konfidenciaküszöb (35\%) empirikusan lett beállítva; a valós nyomtatási körülmények
+          között végzett mérések alapján ezt finomhangolni szükséges (lásd 8. fejezet).
+\end{itemize}

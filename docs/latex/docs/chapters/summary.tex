@@ -1,0 +1,91 @@
+\section{Összefoglalás}
+
+A jelen dolgozat egy valós idejű, mesterséges intelligencián alapuló 3D nyomtatási hibadetektor rendszer
+tervezését és megvalósítását mutatta be, amelynek célja az FDM technológiával üzemelő nyomtatófarmok
+automatizált felügyelete.
+
+A munka első szakaszában az iparági igények és a kapcsolódó szakirodalom elemzésével meghatároztuk azokat
+a leggyakoribb és gazdaságilag legjelentősebb hibatípusokat -- spagetti, nem tapadó réteg, réteg-eltolódás,
+vetemedés, szálazás, alul- és felülextrúdálás, fúvóka-dugulás, idegen tárgy --, amelyek automatikus
+detektálása a legtöbb értéket hozza a nyomtatógazdálkodásban.
+
+Az adatgyűjtési fázisban három nyilvánosan elérhető adathalmaz, automatizált webes képletöltés és 397 saját
+készítésű felvétel kombinációjából \textbf{2422 annotált képből} álló adathalmazt állítottunk össze.
+Az annotálás CVAT eszközzel, kilenc osztályra, bounding-box formátumban történt. Az osztályegyensúly-hiányt
+oversampling technikával, a vizuális diverzitást pedig egy háromrétegű augmentációs pipeline-nal --
+alaptranszformációk, Smart MixUp és mozaik -- korrigáltuk, amelynek eredményeként a tanítókészlet közel
+négyszeresére bővült.
+
+A modellezési szakaszban a YOLOv8x architektúrát alkalmaztuk, kétfázisú tanítási stratégiával.
+Az első fázis 960 képpontos bemeneti felbontáson általánosabb jellemzők megtanulását célozta, míg a
+második fázis 1280 képpontos felbontáson, az első fázis legjobb súlyaiból kiindulva, finomhangolással
+tovább javított a részletgazdag hibaminták felismerésén. A betanított modell végső teljesítménymutatói:
+
+\begin{table}[H]
+\centering
+\caption{A betanított YOLOv8x modell összesített teljesítménye}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|l|c|}
+    \hline
+    \textbf{Metrika} & \textbf{Érték} \\
+    \hline
+    Pontosság (Precision) & $0{,}937$ \\
+    \hline
+    Visszahívás (Recall)  & $0{,}836$ \\
+    \hline
+    mAP@0.5               & $0{,}892$ \\
+    \hline
+    mAP@0.5:0.95          & $0{,}677$ \\
+    \hline
+    Csúcs mAP@0.5         & $0{,}901$ \\
+    \hline
+    Csúcs F1              & $0{,}88$ \\
+    \hline
+\end{tabular}
+\end{table}
+
+A rendszerintegrációs szakaszban egy edge--cloud hibrid architektúra valósult meg. A helyszíni komponenst
+egy Raspberry Pi 4B adja, amelyen három webkamera képkockáit egy \texttt{frame-extractor} szolgáltatás
+gyűjti és publikálja Google Cloud Pub/Sub csatornára. A felhőoldali pipeline egy Dispatcher Cloud Function,
+egy Vertex AI-n futó \texttt{judge} konténer (YOLOv8 inferenciával), egy Alert-Manager Cloud Function,
+valamint egy Firestore-alapú valós idejű webes dashboard elemeiből épül fel. Az infrastruktúra
+Terraformmal kezelt, a modellfrissítések CI/CD workflow-n keresztül történnek -- emberi beavatkozás nélkül.
+
+A rendszer három kameraállásból, másodpercenként hat képkockát dolgoz fel, és magas prioritású hiba
+észlelésekor e-mail értesítést küld a kezelőnek, 60 másodperces kameránkénti cooldown-nal a riasztásözön
+elkerülése érdekében.
+
+% -------------------------------------------------------------------
+\section{Jövőbeli irányok}
+
+A jelenlegi megvalósítás több ponton is tovább fejleszthető:
+
+\begin{itemize}
+    \item \textbf{Konfidenciaküszöb finomhangolása.} A jelenlegi 35\%-os küszöb empirikusan lett
+    meghatározva. Éles nyomtatási körülmények között szisztematikus mérésekkel -- precision--recall
+    kompromisszum elemzéssel -- pontosabb, üzemspecifikus érték határozható meg.
+
+    \item \textbf{Állandó Cloudflare alagút.} Az ideiglenes \textit{quick tunnel} minden Pi-újraindításkor
+    új URL-t kap, ami megszakítja a dashboard stream-kapcsolatát. Éles üzemeltetéshez \textit{named tunnel}
+    konfigurációra van szükség.
+
+    \item \textbf{Vertex AI scale-to-zero.} A végpont jelenlegi minimálpéldánya napi $\approx$37 USD
+    üzemelési költséggel jár. Alacsony intenzitású monitorozási forgatókönyvekben a \textit{scale-to-zero}
+    beállítás jelentős megtakarítást hozhat a hideginduló késleltetés elfogadható növelése árán.
+
+    \item \textbf{Bővített osztálykészlet.} Az adathalmaz elsősorban az FDM technológia legelterjedtebb
+    hibatípusait fedi le. Speciálisabb hibák -- például fúvóka-kopás, rétegleválás, hőmérsékleti
+    anomáliák -- bevonásával a rendszer alkalmazhatósági köre bővíthető.
+
+    \item \textbf{Modell könnyűsúlyúsítása.} A YOLOv8x nagy kapacitású modell; edge eszközön történő
+    futtatáshoz YOLOv8n vagy YOLOv8s változatra való átállás, illetve kvantálás csökkenthetné
+    a felhőinfrastruktúra igénybevételét és a késleltetést.
+
+    \item \textbf{Aktív tanulás.} A rendszer üzemelés közben gyűjti a valós nyomtatási képeket.
+    Egy aktív tanulási ciklus bevezetésével az operátor által megerősített vagy korrigált detekciók
+    visszacsatolhatók az adathalmazba, folyamatosan javítva a modell teljesítményét.
+
+    \item \textbf{Nyomtatóvezérlő integráció.} Jelenleg a rendszer csak értesít; a következő lépés
+    a detektált hiba súlyosságától függő automatikus beavatkozás -- például a nyomtatás szüneteltetése
+    vagy leállítása -- megvalósítása lenne OctoPrint vagy Klipper API-n keresztül.
+\end{itemize}
