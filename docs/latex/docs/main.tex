@@ -30,6 +30,8 @@
 
 %\includepdf[pages={6}]{pdfs/allamvizsga_borito.pdf}
 
+\pagenumbering{gobble}
+
 \input{chapters/mock.tex}
 
 \section*{Kivonat}
@@ -40,14 +42,13 @@
 %\input{chapters/abstractEn}
 %\pagebreak
 
-\pagenumbering{gobble}
-
 \tableofcontents
 
 \listoffigures
 
 \chapter{Bevezető}
 \pagenumbering{arabic}
+\setcounter{page}{1}
 \input{chapters/introduction.tex}
 
 \chapter{Irodalom kutatás}
