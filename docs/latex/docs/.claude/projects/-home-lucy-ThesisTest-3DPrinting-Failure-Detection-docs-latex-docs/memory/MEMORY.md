@@ -1,0 +1,1 @@
+- [Supervisor feedback Apr 2026](project_supervisor_feedback_apr13.md) — model comparison (YOLOv12, RetinaNet), figure footnotes, training grid

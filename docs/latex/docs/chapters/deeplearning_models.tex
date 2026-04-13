@@ -39,6 +39,40 @@
         az Ultralytics által 2023-ban kiadott YOLOv8 mind architektúra, mind teljesítmény tekintetében felülmúlja elődjét,
         ezért a választás arra esett.
 
+        \subsubsection{YOLOv12}
+
+        A YOLOv12 (\textit{You Only Look Once}, 12. verzió) a YOLO modellcsalád legújabb tagja, amelyet 2025 februárjában
+        publikáltak~\cite{yolov12}. A legfőbb újítása az \textit{area attention} mechanizmus bevezetése, amely a hagyományos
+        önfigyelmet (\textit{self-attention}) számítási hatékonyság szempontjából jelentősen optimalizálja azáltal, hogy a
+        jellemzőtérképet egyenlő területű régiókra osztja, és az figyelemszámítást csak a régiókon belül végzi el. Az
+        architektúra ötvözi a CNN-ek lokális jellemzőkinyerő képességét a transzformer-alapú modellek globális kontextusmegértésével,
+        ezáltal a korábbi YOLO változatoknál -- beleértve a YOLOv8-at is -- magasabb mAP-értékeket ér el a COCO
+        benchmarkon~\cite{yolov12}.
+
+        A YOLOv12 a jelen projektben mégsem került alkalmazásra, ennek több oka is van. Egyrészt a modell megjelenésének
+        időpontjában a projekt adatgyűjtési és tanítási fázisa már YOLOv8 keretrendszerben zajlott, így a váltás
+        jelentős átdolgozást igényelt volna. Másrészt a YOLOv12 attention-alapú architektúrája nagyobb GPU-memóriát igényel
+        az inferencia során, ami a projekt Vertex AI-alapú, költségérzékeny telepítési modelljével nehezebben egyeztethető
+        össze. Harmadrészt a YOLOv12 az Ultralytics keretrendszeren belül elérhető, tehát egy jövőbeli modellcsere
+        minimális erőfeszítéssel megvalósítható, amennyiben a teljesítményelőny indokolja.
+
+        \subsubsection{RetinaNet}
+
+        A RetinaNet egy egyfázisú objektumdetekciós hálózat, amelyet Lin és társai publikáltak 2017-ben~\cite{retinanet}.
+        A modell fő hozzájárulása a \textit{focal loss} veszteségfüggvény bevezetése, amely az egymenetes detektorok
+        legfőbb korlátját -- az osztályegyensúlytalanságot az előtér és háttér minták között -- orvosolja azáltal, hogy
+        a jól osztályozott, könnyű példák súlyát dinamikusan csökkenti, és a nehéz, félreosztályozott mintákra helyezi
+        a hangsúlyt. Az architektúra egy Feature Pyramid Network (FPN) gerincre épül, amely többléptékű jellemzőtérképeket
+        állít elő, és minden léptéken külön osztályozó és regressziós alhálózat működik.
+
+        A RetinaNet a kétfázisú detektorokkal összevethető pontosságot ér el egyfázisú sebességgel, és a focal loss
+        megközelítése a későbbi detektorok -- köztük a YOLO változatok -- veszteségfüggvényeire is hatást gyakorolt.
+        A jelen projekt szempontjából a RetinaNet potenciális alternatíva lett volna, azonban az Ultralytics keretrendszer
+        natív YOLOv8-támogatása -- beleértve a CLI-alapú tanítást, az egyszerű exportálást és a Docker-konténerizációt --
+        lényegesen egyszerűbb integrációt tett lehetővé a Google Cloud-alapú pipeline-ba. A RetinaNet használata
+        külön keretrendszert (pl. Detectron2 vagy MMDetection) igényelt volna, ami a telepítés és karbantartás
+        komplexitását jelentősen növelte volna.
+
     \section{A projekt megvalósításához kiválasztott modell -- YOLOv8}
 
     \subsection{Bevezetés}

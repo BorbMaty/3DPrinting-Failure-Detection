@@ -88,4 +88,13 @@ A jelenlegi megvalósítás több ponton is tovább fejleszthető:
     \item \textbf{Nyomtatóvezérlő integráció.} Jelenleg a rendszer csak értesít; a következő lépés
     a detektált hiba súlyosságától függő automatikus beavatkozás -- például a nyomtatás szüneteltetése
     vagy leállítása -- megvalósítása lenne OctoPrint vagy Klipper API-n keresztül.
+
+    \item \textbf{Rendszer szintű tesztelés és kiértékelés.} A jelenlegi fejlesztési szakaszban a
+    rendszer egyes komponensei -- modell, edge eszköz, felhőoldali pipeline -- külön-külön lettek
+    validálva. A következő lépés egy átfogó, végponttól végpontig tartó tesztelési terv kidolgozása
+    és végrehajtása, amely a teljes rendszert valós nyomtatási környezetben, hosszabb időszakon
+    keresztül vizsgálja. Ez magában foglalja a detekciós pontosság mérését éles körülmények között,
+    a késleltetés és áteresztőképesség profilozását, a riasztások megbízhatóságának elemzését
+    (hamis pozitív/negatív arány), valamint a rendszer stabilitásának és skálázhatóságának értékelését
+    több nyomtató egyidejű felügyelete esetén.
 \end{itemize}

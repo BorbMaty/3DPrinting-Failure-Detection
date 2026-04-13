@@ -71,6 +71,43 @@ automatizált webes képletöltésre, valamint saját kezűleg rögzített felv�
         \item \textbf{spagetti} -- spagetti-jelenség
     \end{itemize}
 
+    A \ref{fig:training_grid}. ábra az egyes hibaosztályokhoz tartozó egy-egy reprezentatív tanítóképet mutat be.
+
+    \begin{figure}[H]
+    \centering
+        \subfigure[szálazás]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/stringing.jpg}
+        }
+        \subfigure[vetemedés]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/warping.jpg}
+        }
+        \subfigure[réteg eltolódás]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/layer_shift.jpg}
+        }
+
+        \subfigure[alul extrúdálás]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/under_extrusion.jpg}
+        }
+        \subfigure[felül extrudálás]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/over_extrusion.jpg}
+        }
+        \subfigure[fúvóka dugulás]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/nozzle_clog.jpg}
+        }
+
+        \subfigure[idegen tárgy]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/foreign_object.jpg}
+        }
+        \subfigure[nem tapadó első réteg]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/not_sticking.jpg}
+        }
+        \subfigure[spagetti]{
+            \includegraphics[width=0.3\textwidth]{figures/images/training_samples/spagetti.jpg}
+        }
+    \caption{Reprezentatív tanítóképek a kilenc hibaosztályból}
+    \label{fig:training_grid}
+    \end{figure}
+
     A CVAT az annotációkat YOLO-formátumban exportálta: minden képhez egy \texttt{.txt} fájl
     tartozik, amelynek minden sora egy detektált objektumot ír le az
     \texttt{<osztály> <x\_közép> <y\_közép> <szélesség> <magasság>} normalizált formátumban,
