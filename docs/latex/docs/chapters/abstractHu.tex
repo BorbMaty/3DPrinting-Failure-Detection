@@ -1,12 +1,12 @@
 A 3D nyomtatási folyamat során különböző hibák léphetnek fel, amelyek anyagveszteséget, időveszteséget és akár a berendezés károsodását is okozhatják.
 A dolgozat célja egy olyan valós idejű monitorizáló rendszer fejlesztése, amely képfeldolgozási módszerekkel képes felismerni a nyomtatási hibákat.
 A javasolt megoldás egy többkamerás megfigyelőrendszerre épül, amely a nyomtatási folyamatot folyamatosan rögzíti, majd a képkockákat egy felhőalapú
-környezetben futó YOLOv8 neurális hálózat dolgozza fel. A modell egy saját annotált adathalmazon került betanításra, és 9 hibaosztály felismerésére képes, és 92.6\% mAP50 pontossággal
-és 87.3\% recall értékkel rendelkezik, illetve másodpercenként 3 képkockát dolgoz fel 23 ms inferencia idővel.
+környezetben futó YOLOv8 neurális hálózat dolgozza fel. A modell egy saját annotált adathalmazon került betanításra, és 9 hibaosztály felismerésére képes, és 89.2\% mAP50 pontossággal
+és 83.6\% recall értékkel rendelkezik, illetve másodpercenként 6 képkockát dolgoz fel 23 ms inferencia idővel.
 A rendszer része egy értesítési mechanizmus is, amely anomália észlelése esetén azonnali visszajelzést ad a felhasználónak.
 A kísérleti eredmények alapján a rendszer alkalmas valós idejű hibadetektálásra, és hozzájárulhat a nyomtatási folyamat hatékonyságának növeléséhez,
 valamint az anyagveszteség csökkentéséhez.\\
 
 
 
-\textbf{Kulcsszavak}: 3D nyomtatás,Konvoluciós Neuronháló, YOLOv8x, Rasberry Pi, Google Cloud, vertexAI, hiba, Terraform, Docker, Firebase\\
+\textbf{Kulcsszavak}: 3D nyomtatás, Konvolúciós neuronháló, YOLOv8x, Raspberry Pi, Google Cloud, Vertex AI, hiba, Terraform, Docker, Firebase\\

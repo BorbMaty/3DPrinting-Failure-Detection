@@ -17,8 +17,7 @@ a Vertex AI végpont HTTP interfészén. A modellcsere folyamata a következő l
     \item A Vertex AI végpont a következő aktiváláskor az új image-t húzza le és futtatja.
 \end{enumerate}
 
-Ez a folyamat biztosítja, hogy a modell minden frissítése verziókövetett, visszagörgetható és automatizált legyen
--- kézi szerverhozzáférés nélkül.
+Ez a folyamat biztosítja, hogy a modell minden frissítése verziókövetett, visszagörgetható és automatizált legyen, kézi szerverhozzáférés nélkül.
 
 \section{Telepítési sorrend}
 
@@ -29,7 +28,7 @@ Az első telepítés során a következő sorrendben kell elvégezni a lépések
 Az infrastruktúra felállítása Terraform segítségével történik. A \texttt{terraform apply} parancs kiadása után
 automatikusan létrejönnek a Pub/Sub topicok, a Cloud Functions, a Vertex AI végpont, a Firestore kollekciók
 és az Artifact Registry repository. Az infrastruktúra változtatásai a \texttt{main} ágra való merge esetén
-a CI/CD pipeline automatikusan alkalmazza -- így a rendszer mindig a konfigurációval összhangban van.
+a CI/CD pipeline automatikusan alkalmazza, így a rendszer mindig a konfigurációval összhangban van.
 
 \subsection{A \texttt{judge} konténer telepítése}
 
@@ -42,9 +41,9 @@ az első hívásakor automatikusan lehív. A konténer telepítéséhez nincs sz
 A Raspberry Pi-n az alábbi három systemd szolgáltatást kell egyszeri konfigurációval engedélyezni:
 
 \begin{itemize}
-    \item \textbf{MediaMTX} -- a kamerastream RTSP publikálásáért felelős.
-    \item \textbf{frame-extractor} -- a képkockák kinyeréséért és Pub/Sub-ra való publikálásáért felelős.
-    \item \textbf{cloudflared} -- a Cloudflare alagút fenntartásáért felelős, amelyen keresztül a dashboard eléri az RTSP streameket.
+    \item \textbf{MediaMTX} - a kamerastream RTSP publikálásáért felelős.
+    \item \textbf{frame-extractor} - a képkockák kinyeréséért és Pub/Sub-ra való publikálásáért felelős.
+    \item \textbf{cloudflared} - a Cloudflare alagút fenntartásáért felelős, amelyen keresztül a dashboard eléri az RTSP streameket.
 \end{itemize}
 
 A szolgáltatások az eszköz bekapcsolásakor automatikusan elindulnak, emberi beavatkozás nélkül.
@@ -66,8 +65,8 @@ emberi beavatkozás nélkül (lásd \ref{fig:systemarch}. ábra):
           továbbítja OAuth2 hitelesítéssel.
 
     \item A \textbf{Vertex AI végponton} futó \texttt{judge} konténer elvégzi az objektumdetekciót
-          a YOLOv8 modell segítségével, majd az eredményt -- a detektált hibaosztályokat, konfidenciaértékeket
-          és határoló téglalapokat -- visszapublikálja a \texttt{detections-out} topicra.
+          a YOLOv8 modell segítségével, majd az eredményt, a detektált hibaosztályokat, konfidenciaértékeket
+          és határoló téglalapokat, visszapublikálja a \texttt{detections-out} topicra.
 
     \item Az \textbf{Alert-Manager} Cloud Function feldolgozza a detekciós eredményeket.
           A 35\%-os konfidenciaküszöböt elérő detektálásokat a Firestore \texttt{alerts} kollekcióba írja.
@@ -85,10 +84,10 @@ A webes felület megnyitása után az operátor egyetlen nézetből felügyeli a
 A felület három fő részből áll:
 
 \begin{itemize}
-    \item \textbf{Kamerastream panel} -- a három kamera élő WebRTC videofolyamát jeleníti meg egymás mellett.
-    \item \textbf{Detekciós napló} -- valós időben frissülő táblázat, amely tartalmazza az észlelt hibaosztályt,
+    \item \textbf{Kamerastream panel} - a három kamera élő WebRTC videofolyamát jeleníti meg egymás mellett.
+    \item \textbf{Detekciós napló} - valós időben frissülő táblázat, amely tartalmazza az észlelt hibaosztályt,
           a konfidenciaértéket, az érintett kamera azonosítóját és az észlelés pontos időbélyegét.
-    \item \textbf{Állapotjelzés} -- magas prioritású hiba esetén a felület piros kerettel jelez (\textit{alerting}
+    \item \textbf{Állapotjelzés} - magas prioritású hiba esetén a felület piros kerettel jelez (\textit{alerting}
           állapot); költségvetési küszöb átlépésekor sárga kerettel (\textit{budget-alert} állapot).
 \end{itemize}
 

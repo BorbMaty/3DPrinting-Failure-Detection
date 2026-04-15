@@ -5,7 +5,7 @@ súlyokból kiindulva, 960 képpontos bemeneti felbontáson tanítottuk be a mod
 fázisban (\texttt{y8x\_phase2\_12803}) az első fázis legjobb súlyait (\texttt{best.pt}) töltöttük be kiindulópontként, majd
 finomhangolást végeztünk 1280 képpontos felbontáson, 100 epokon keresztül. Ez a megközelítés lehetővé tette, hogy a modell
 először általánosabb jellemzőket tanuljon meg alacsonyabb felbontáson, majd a magasabb felbontású finomhangolás során
-részletgazdagabb mintázatokat -- például finom szálhúzásokat vagy rétegcsúszásokat -- is megbízhatóan felismerjen.
+részletgazdagabb mintázatokat, például finom szálhúzásokat vagy rétegcsúszásokat, is megbízhatóan felismerjen.
 
 \section{A második tanítási fázis konfigurációja}
 
@@ -86,8 +86,8 @@ a modell gyorsan kompenzált.
 
 A \ref{fig:phase2_pr}. ábra az egyes hibaosztályok Precision-Recall görbéit mutatja. Az összes osztályra vonatkozó
 összesített mAP@0.5 értéke $\mathbf{0{,}892}$. A görbék alapján megállapítható, hogy a modell a legtöbb hibaosztályt
-magas pontossággal képes felismerni. A kisebb területű vagy vizuálisan hasonló hibatípusok -- például a
-\textit{under\_extrusion} és \textit{nozzle\_clog} -- esetén a görbe alatti terület alacsonyabb, ami ezeknek az
+magas pontossággal képes felismerni. A kisebb területű vagy vizuálisan hasonló hibatípusok, például az
+\textit{under\_extrusion} és a \textit{nozzle\_clog}, esetén a görbe alatti terület alacsonyabb, ami ezeknek az
 osztályoknak a nagyobb detekciós nehézségét tükrözi.
 
 \subsection{F1-konfidencia görbe}
@@ -102,7 +102,7 @@ osztályoknak a nagyobb detekciós nehézségét tükrözi.
 Az \ref{fig:phase2_f1}. ábra az F1-pontszámot ábrázolja a konfidenciaküszöb függvényében. A csúcs-F1 értéke
 $\mathbf{0{,}88}$, amelyet $\approx 0{,}38$ körüli konfidenciaküszöbnél ér el a modell. Ez azt jelenti, hogy a
 precizitás és a visszahívási arány optimális egyensúlya ennél a küszöbértéknél érhető el az éles alkalmazásban.
-A görbe viszonylag lapos a $0{,}2$--$0{,}55$ tartományban, ami robusztus viselkedésre utal a konfidenciaküszöb
+A görbe viszonylag lapos a $0{,}2$-$0{,}55$ tartományban, ami robusztus viselkedésre utal a konfidenciaküszöb
 finomhangolásával szemben.
 
 \subsection{Konfúziós mátrix}

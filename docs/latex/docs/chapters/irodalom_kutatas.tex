@@ -1,6 +1,6 @@
 \section{Bevezetés}
 
-A 3D nyomtatási folyamatok automatizált hibdetekciójának kutatása az elmúlt évtizedben kiemelkedő
+A 3D nyomtatási folyamatok automatizált hibadetekciójának kutatása az elmúlt évtizedben kiemelkedő
 figyelmet kapott, különösen az additív gyártás ipari elterjedésével párhuzamosan. A szakirodalom
 két fő megközelítési irányt különböztet meg: a \textbf{képalapú} (gépi látás és mélytanulás) és az
 \textbf{akusztikai jelalapú} módszereket. Jelen fejezet áttekinti a terület legfontosabb publikációit,
@@ -18,15 +18,15 @@ konvolúciós neurális hálózatok alkalmazására, amelyek a jelen projekt elm
     rendszert fejlesztett ki, amelyben a referencia képeket nem valódi nyomtatásból, hanem
     G-kód alapján, Blender fizikai renderelőmotorral szintetikusan állítják elő. A detekció
     irányított gradiens hisztogramok (\textit{Histograms of Oriented Gradients}, HOG) hasonlóságának
-    mérésén alapul. A módszer hat reprezentatív hibatípus -- köztük a spagetti-jelenség, a
-    réteg-eltolódás és az idegen tárgy jelenléte -- azonosítására terjed ki, és különlegessége,
+    mérésén alapul. A módszer hat reprezentatív hibatípus, köztük a spagetti-jelenség, a
+    réteg-eltolódás és az idegen tárgy jelenléte, azonosítására terjed ki, és különlegessége,
     hogy előzetes betanítási adathalmazt nem igényel. Tizenkét hasonlóság- és távolságmérték
     összehasonlítása alapján a Pearson-korreláció, a Spearman-féle rangkorreláció és a koszinusz-hasonlóság
     bizonyult a legmegbízhatóbbnak.
 
     Egy másik referencia-összehasonlításon alapuló megközelítést mutat be Ben Hammouda és
     társai~\cite{benhammouda2024defect} munkája, amelyben az FDM nyomtatás során keletkező hibákat
-    képfeldolgozási technikák -- él- és textúraanalízis, szegmentálás -- segítségével azonosítják.
+    képfeldolgozási technikák, él- és textúraanalízis, szegmentálás, segítségével azonosítják.
     A vizsgált módszerek az STL-fájlokból generált ideális képekkel vetik össze a valódi rétegfelvételeket,
     és különböző geometriai eltérések alapján adnak visszajelzést a nyomtatás minőségéről.
     A kísérletsorozat megerősíti, hogy a kétdimenziós összehasonlítás hatékonyan alkalmazható
@@ -35,7 +35,7 @@ konvolúciós neurális hálózatok alkalmazására, amelyek a jelen projekt elm
 
     \subsection{Mélytanulás alapú, valós idejű hibadedekció}
 
-    A mélytanulási módszerek -- különösen a konvolúciós neurális hálózatok (CNN) -- új lehetőségeket
+    A mélytanulási módszerek, különösen a konvolúciós neurális hálózatok (CNN), új lehetőségeket
     nyitottak a 3D nyomtatási hibák valós idejű, automatikus felismerésében.
 
     Paraskevoudis és társai~\cite{paraskevoudis2020stringing} egy mély konvolúciós neurális hálózatot
@@ -43,9 +43,9 @@ konvolúciós neurális hálózatok alkalmazására, amelyek a jelen projekt elm
     nyomtatásoknál. A modellt élő videóbemenetről szerzett, szálazást ábrázoló képeken tanították be,
     és valós nyomtatási környezetben tesztelték. Az eredmények szerint a módszer nagy sebességgel
     és megbízható pontossággal azonosítja a hibát, és lehetőséget nyújt a folyamat automatikus
-    megállítására vagy a nyomtatási paraméterek korrekciójaárat. A tanulmány hangsúlyozza, hogy
+    megállítására vagy a nyomtatási paraméterek korrekciójára. A tanulmány hangsúlyozza, hogy
     a kameralapú detekció különösen hatékony azon hibatípusoknál, amelyek vizuálisan, a darab
-    és folyamat megfigyelése alapján azonosíthatóak -- szemben a forrástüneti hibákkal, amelyek
+    és folyamat megfigyelése alapján azonosíthatóak, szemben a forrástüneti hibákkal, amelyek
     érzékelőkkel közvetlenül is detektálhatók.
 
     Zhang és társai~\cite{zhang2023multiaxis} többtengelyes FDM nyomtatáshoz fejlesztett offline
@@ -66,8 +66,8 @@ konvolúciós neurális hálózatok alkalmazására, amelyek a jelen projekt elm
 
     \subsection{Háromdimenziós gépi látás}
 
-    A kétdimenziós képalapú módszerek korlátait -- különösen kis méretű, mélységi információt
-    igénylő defektusok esetén -- 3D gépi látással igyekeznek feloldani.
+    A kétdimenziós képalapú módszerek korlátait, különösen kis méretű, mélységi információt
+    igénylő defektusok esetén, 3D gépi látással igyekeznek feloldani.
 
     Zhao és társai~\cite{zhao2023geometric} pontfelhő-alapú detekciós módszert dolgoztak ki 3D
     nyomtatott felületek hibáinak azonosítására. Az általuk javasolt MBH kulcspontdetektor és INRoPS
@@ -88,8 +88,8 @@ következtetni lehet.
 Barriga-Machado és társai~\cite{barriga2025acoustic} PLA alapú, extrudálással előállított minták
 károsodásmechanizmusait vizsgálták AE-analízissel kombinálva felügyelet nélküli (\textit{DBSCAN},
 \textit{k-means}) és hibrid felügyeletes (\textit{CNN} spektrogram alapú) tanulási módszereket.
-A DBSCAN két jól elkülöníthető klasztert azonosított: alacsony frekvenciás (0--260\,kHz) és magas
-frekvenciás (270--390\,kHz) csoportot, amelyek a filament törési és a rétegközi szétválási
+A DBSCAN két jól elkülöníthető klasztert azonosított: alacsony frekvenciás (0-260\,kHz) és magas
+frekvenciás (270-390\,kHz) csoportot, amelyek a filament törési és a rétegközi szétválási
 mechanizmusoknak felelnek meg. Az eredmények igazolják, hogy az adathajtott AE-analízis gyors és
 nem romboló eszközt jelent az \textit{in-situ} károsodásdetekciókhoz polimer additív gyártásban.
 
@@ -97,8 +97,8 @@ Waheed és Bernadin~\cite{waheed2023acoustic} valós idejű hangjelalapú hibade
 fejlesztett FDM nyomtatókhoz CNN-modell alkalmazásával. A rendszer a nyomtatás során keletkező
 hangjeleket rögzíti és spektrogrammá alakítja, amelyeket a CNN oszt be hibatípus szerint.
 A vizsgált hibakategóriák között szerepelt a fúvókadugulás, a filamentszakadás és a fogaskerék-csúszás.
-A kontaktus nélküli, skálázható megközelítés -- szemben a hagyományos érzékelőalapú megoldásokkal
--- nem igényel közvetlen mechanikai integrációt a nyomtatóba, és az előzetes mérések alapján
+A kontaktus nélküli, skálázható megközelítés, szemben a hagyományos érzékelőalapú megoldásokkal,
+nem igényel közvetlen mechanikai integrációt a nyomtatóba, és az előzetes mérések alapján
 megbízható valós idejű hibajelzést képes nyújtani.
 
 Bin Zainal és társai~\cite{binzainal2025lpbf} lézeres porfúziós (\textit{Laser Powder Bed Fusion},
@@ -114,15 +114,15 @@ valós idejű ellenőrzéséhez.
 
 A YOLO (\textit{You Only Look Once}) objektumdetekciós modellek az iparban is egyre szélesebb
 körben terjednek, köszönhetően kiemelkedő sebességüknek és pontosságuknak. Jóllehet az alábbi
-tanulmány nem 3D nyomtatásra, hanem acélfelületek hibadetekcójára fókuszál, módszertanilag
+tanulmány nem 3D nyomtatásra, hanem acélfelületek hibadetekciójára fókuszál, módszertanilag
 szorosan kapcsolódik a jelen projektben alkalmazott megközelítéshez.
 
 Wang és társai~\cite{wang2023yolov5steel} valós idejű acélfelület-hibadedekciós rendszert fejlesztett
 többléptékű YOLOv5-alapon. A hálózathoz speciális többléptékű feltáró blokkot és térbeli figyelemfigyelmet
 (\textit{spatial attention mechanism}) integráltak a különböző méretű felületi hibák hatékony
 felismeréséhez. A NEU-DET adathalmazon elért ~72\%-os mAP érték és a valós idejű sebesség
-igazolja, hogy a YOLO-architektúra gyári minőség-ellenőrzési feladatokra -- a 3D nyomtatás
-hibadetekcójához hasonló körülmények között -- megbízhatóan alkalmazható. A többléptékű
+igazolja, hogy a YOLO-architektúra gyári minőség-ellenőrzési feladatokra, a 3D nyomtatás
+hibadetekciójához hasonló körülmények között, megbízhatóan alkalmazható. A többléptékű
 megközelítés különösen fontos, mivel az additív gyártás hibái is rendkívül változatos méretekben
 és megjelenési formákban fordulnak elő.
 
@@ -131,8 +131,8 @@ megközelítés különösen fontos, mivel az additív gyártás hibái is rendk
 
 A fenti szakirodalom áttekintéséből több fontos következtetés vonható le.
 
-Egyrészt, a \textbf{képalapú, mélytanulási módszerek} -- különösen a YOLO-architektúrán alapuló
-egymenetes detektorok -- a valós idejű ipari hibadetekció legsikeresebb eszközei, amelyek a
+Egyrészt, a \textbf{képalapú, mélytanulási módszerek}, különösen a YOLO-architektúrán alapuló
+egymenetes detektorok, a valós idejű ipari hibadetekció legsikeresebb eszközei, amelyek a
 referenciaalapú és hagyományos képfeldolgozásnál rugalmasabban generalizálnak, és nem igényelnek
 előre meghatározott geometriai modellt.
 
@@ -143,8 +143,8 @@ még korlátozott az elterjedtségük a szükséges szenzorintegráció és a za
 Harmadrészt, az áttekintett megoldások többsége \textbf{egyetlen kameraállást} alkalmaz, ami
 korlátozza a detektálható hibatípusok körét. Ezt a korlátot a jelen projekt egy
 \textbf{többkamerás architektúrával} hivatott feloldani, lehetővé téve, hogy a nyomtató különböző
-nézőpontjaiból érkező képek együttes feldolgozásával robosztusabb detekciós rendszer valósuljon meg.
+nézőpontjaiból érkező képek együttes feldolgozásával robusztusabb detekciós rendszer valósuljon meg.
 
-A vonatkozó irodalom alapján a projekt a mélytanulás -- konkrétan a YOLOv8 -- és a valós idejű
+A vonatkozó irodalom alapján a projekt a mélytanulás, konkrétan a YOLOv8, és a valós idejű
 kamerastreaming kombinációjára épít, igazodva a terület tudományos konszenzusához, miközben az
 általánosabb ipari alkalmazhatóságot és skálázhatóságot is szem előtt tartja.

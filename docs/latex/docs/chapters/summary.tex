@@ -5,15 +5,15 @@ tervezését és megvalósítását mutatta be, amelynek célja az FDM technoló
 automatizált felügyelete.
 
 A munka első szakaszában az iparági igények és a kapcsolódó szakirodalom elemzésével meghatároztuk azokat
-a leggyakoribb és gazdaságilag legjelentősebb hibatípusokat -- spagetti, nem tapadó réteg, réteg-eltolódás,
-vetemedés, szálazás, alul- és felülextrúdálás, fúvóka-dugulás, idegen tárgy --, amelyek automatikus
+a leggyakoribb és gazdaságilag legjelentősebb hibatípusokat,  spagetti, nem tapadó réteg, réteg-eltolódás,
+vetemedés, szálazás, alul- és felülextrúdálás, fúvóka-dugulás, idegen tárgy, amelyek automatikus
 detektálása a legtöbb értéket hozza a nyomtatógazdálkodásban.
 
 Az adatgyűjtési fázisban három nyilvánosan elérhető adathalmaz, automatizált webes képletöltés és 397 saját
 készítésű felvétel kombinációjából \textbf{2422 annotált képből} álló adathalmazt állítottunk össze.
 Az annotálás CVAT eszközzel, kilenc osztályra, bounding-box formátumban történt. Az osztályegyensúly-hiányt
-oversampling technikával, a vizuális diverzitást pedig egy háromrétegű augmentációs pipeline-nal --
-alaptranszformációk, Smart MixUp és mozaik -- korrigáltuk, amelynek eredményeként a tanítókészlet közel
+oversampling technikával, a vizuális diverzitást pedig egy háromrétegű augmentációs pipeline-nal,
+alaptranszformációk, Smart MixUp és mozaik, korrigáltuk, amelynek eredményeként a tanítókészlet közel
 négyszeresére bővült.
 
 A modellezési szakaszban a YOLOv8x architektúrát alkalmaztuk, kétfázisú tanítási stratégiával.
@@ -44,12 +44,12 @@ tovább javított a részletgazdag hibaminták felismerésén. A betanított mod
 \end{tabular}
 \end{table}
 
-A rendszerintegrációs szakaszban egy edge--cloud hibrid architektúra valósult meg. A helyszíni komponenst
+A rendszerintegrációs szakaszban egy edge-cloud hibrid architektúra valósult meg. A helyszíni komponenst
 egy Raspberry Pi 4B adja, amelyen három webkamera képkockáit egy \texttt{frame-extractor} szolgáltatás
 gyűjti és publikálja Google Cloud Pub/Sub csatornára. A felhőoldali pipeline egy Dispatcher Cloud Function,
 egy Vertex AI-n futó \texttt{judge} konténer (YOLOv8 inferenciával), egy Alert-Manager Cloud Function,
 valamint egy Firestore-alapú valós idejű webes dashboard elemeiből épül fel. Az infrastruktúra
-Terraformmal kezelt, a modellfrissítések CI/CD workflow-n keresztül történnek -- emberi beavatkozás nélkül.
+Terraformmal kezelt, a modellfrissítések CI/CD workflow-n keresztül történnek, emberi beavatkozás nélkül.
 
 A rendszer három kameraállásból, másodpercenként hat képkockát dolgoz fel, és magas prioritású hiba
 észlelésekor e-mail értesítést küld a kezelőnek, 60 másodperces kameránkénti cooldown-nal a riasztásözön
@@ -62,8 +62,8 @@ A jelenlegi megvalósítás több ponton is tovább fejleszthető:
 
 \begin{itemize}
     \item \textbf{Konfidenciaküszöb finomhangolása.} A jelenlegi 35\%-os küszöb empirikusan lett
-    meghatározva. Éles nyomtatási körülmények között szisztematikus mérésekkel -- precision--recall
-    kompromisszum elemzéssel -- pontosabb, üzemspecifikus érték határozható meg.
+    meghatározva. Éles nyomtatási körülmények között szisztematikus mérésekkel, precision-recall
+    kompromisszum elemzéssel, pontosabb, üzemspecifikus érték határozható meg.
 
     \item \textbf{Állandó Cloudflare alagút.} Az ideiglenes \textit{quick tunnel} minden Pi-újraindításkor
     új URL-t kap, ami megszakítja a dashboard stream-kapcsolatát. Éles üzemeltetéshez \textit{named tunnel}
@@ -74,8 +74,8 @@ A jelenlegi megvalósítás több ponton is tovább fejleszthető:
     beállítás jelentős megtakarítást hozhat a hideginduló késleltetés elfogadható növelése árán.
 
     \item \textbf{Bővített osztálykészlet.} Az adathalmaz elsősorban az FDM technológia legelterjedtebb
-    hibatípusait fedi le. Speciálisabb hibák -- például fúvóka-kopás, rétegleválás, hőmérsékleti
-    anomáliák -- bevonásával a rendszer alkalmazhatósági köre bővíthető.
+    hibatípusait fedi le. Speciálisabb hibák, például fúvóka-kopás, rétegleválás, hőmérsékleti
+    anomáliák, bevonásával a rendszer alkalmazhatósági köre bővíthető.
 
     \item \textbf{Modell könnyűsúlyúsítása.} A YOLOv8x nagy kapacitású modell; edge eszközön történő
     futtatáshoz YOLOv8n vagy YOLOv8s változatra való átállás, illetve kvantálás csökkenthetné
@@ -86,11 +86,11 @@ A jelenlegi megvalósítás több ponton is tovább fejleszthető:
     visszacsatolhatók az adathalmazba, folyamatosan javítva a modell teljesítményét.
 
     \item \textbf{Nyomtatóvezérlő integráció.} Jelenleg a rendszer csak értesít; a következő lépés
-    a detektált hiba súlyosságától függő automatikus beavatkozás -- például a nyomtatás szüneteltetése
-    vagy leállítása -- megvalósítása lenne OctoPrint vagy Klipper API-n keresztül.
+    a detektált hiba súlyosságától függő automatikus beavatkozás, például a nyomtatás szüneteltetése
+    vagy leállítása, megvalósítása lenne OctoPrint vagy Klipper API-n keresztül.
 
     \item \textbf{Rendszer szintű tesztelés és kiértékelés.} A jelenlegi fejlesztési szakaszban a
-    rendszer egyes komponensei -- modell, edge eszköz, felhőoldali pipeline -- külön-külön lettek
+    rendszer egyes komponensei, modell, edge eszköz, felhőoldali pipeline, külön-külön lettek
     validálva. A következő lépés egy átfogó, végponttól végpontig tartó tesztelési terv kidolgozása
     és végrehajtása, amely a teljes rendszert valós nyomtatási környezetben, hosszabb időszakon
     keresztül vizsgálja. Ez magában foglalja a detekciós pontosság mérését éles körülmények között,

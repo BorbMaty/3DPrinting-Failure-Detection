@@ -1,6 +1,6 @@
 \section{A projekt motivációja}
 
-Az additív gyártás -- ezen belül is az FDM (Fused Deposition Modelling) alapú 3D nyomtatás -- az elmúlt
+Az additív gyártás, ezen belül is az FDM (Fused Deposition Modelling) alapú 3D nyomtatás,  az elmúlt
 évtizedben kiemelkedő szerepet töltött be a modern gyártóiparban. A technológia lehetővé teszi egyedi
 geometriák, kis sorozatú alkatrészek és funkcionális prototípusok gyors, gazdaságos előállítását, melyre
 a hagyományos szubsztraktív eljárások nem képesek ilyen rugalmassággal. Ezen előnyök eredményeképpen
@@ -8,7 +8,7 @@ a 3D nyomtatás napjainkra az ipari termelésen túl az egészségügytől az ű
 meghonosodott.
 
 Ugyanakkor a technológia széleskörű elterjedésével párhuzamosan az üzemeltetési kihívások is egyre
-összetettebbekké válnak. A nyomtatási folyamatok -- különösen FDM technológia esetén -- számos tipikus
+összetettebbekké válnak. A nyomtatási folyamatok, különösen FDM technológia esetén, számos tipikus
 meghibásodásra hajlamosak, amelyek anyagveszteséget, időveszteséget, illetve súlyosabb esetben a
 berendezés megrongálódását okozhatják. Ilyen körülmények között a hibák kézi, szemrevételezésen alapuló
 felismerése nem csupán lassú és körülményes, hanem nagyüzemi környezetben gyakorlatilag kivitelezhetetlen.
@@ -23,7 +23,7 @@ a projekt konkrét célkitűzéseit.
 A 3D nyomtatás iparági térhódítása az elmúlt évtizedben látványos volt. A gyártóüzemekben egyre
 elterjedtebbé válnak az úgynevezett nyomtatófarmok, ahol egyetlen helyszínen tíz vagy akár száz
 nyomtatóegység üzemel egyidejűleg \cite{voxelmatters2023farm}. Ilyen léptékű infrastruktúra esetén a
-manuális felügyelet -- azaz a kezelő személyes jelenlétével megvalósuló ellenőrzés -- nem valósítható
+manuális felügyelet, azaz a kezelő személyes jelenlétével megvalósuló ellenőrzés, nem valósítható
 meg hatékonyan: a karbantartó személyzet sem az egyes gépek állapotát, sem az éppen zajló nyomtatásokat
 nem képes folyamatosan nyomon követni.
 
@@ -35,7 +35,7 @@ nem képes folyamatosan nyomon követni.
 \footnotetext{\textit{Fotó}:\url{https://www.voxelmatters.com/the-rise-of-3d-printer-farms/}}
 
 A farm-üzemeltetés sajátos kihívást jelent a hibadetektálás szempontjából is. Ha egyetlen gépen
-bekövetkező hiba -- például szálazás, réteg-eltolódás vagy tapadásvesztés -- észrevétlen marad, az
+bekövetkező hiba, például szálazás, réteg-eltolódás vagy tapadásvesztés, észrevétlen marad, az
 anyag- és időveszteség sokszorozódhat: a nyomtató akár órákon át termel selejtet, mire a kezelő
 beavatkozik. Súlyosabb esetben a fúvóka károsodása vagy a tárgyasztal megsérülése komoly javítási
 költséget von maga után. Az automatizált monitorozás ebben a kontextusban nem csupán kényelmi
@@ -52,7 +52,7 @@ A leggyakoribb és legsúlyosabb következményekkel járó hibatípusok a köve
     \item \textbf{Tapadásvesztés és spagetti:} Az első réteg elválása a tárgyasztaltól az egyik
     legelterjedtebb és legnehezebben megelőzhető hiba. Ha a darab elveszíti rögzítettségét,
     a fúvóka a levegőbe extrudálja az anyagot, egy jellegzetes, rendezetlenül összegubancolódott
-    szálkupacot -- köznyelvben „spagettit" -- hozva létre. Az anyagveszteség ilyenkor akár több
+    szálkupacot, köznyelvben „spagettit", hozva létre. Az anyagveszteség ilyenkor akár több
     tíz gramm is lehet.
     \item \textbf{Réteg-eltolódás (layer shift):} A koordináta-rendszerbeli eltérés miatt a
     nyomtatott rétegek elcsúsznak egymáshoz képest, a darab szerkezete meggyengül vagy teljesen
@@ -64,8 +64,8 @@ A leggyakoribb és legsúlyosabb következményekkel járó hibatípusok a köve
     minőséget eredményez.
 \end{itemize}
 
-Ezek a hibák nemcsak az egyes darabok minőségét rontják le, hanem -- ha felügyelet nélkül maradnak
--- a gyártóeszköz élettartamát is csökkenthetik. A nyomtatófarmok üzemeltetői számára különösen
+Ezek a hibák nemcsak az egyes darabok minőségét rontják le, hanem, ha felügyelet nélkül maradnak,
+a gyártóeszköz élettartamát is csökkenthetik. A nyomtatófarmok üzemeltetői számára különösen
 fontos a korai, automatikus jelzés, hiszen a kiesési idő és az anyagköltség közvetlen üzleti
 veszteséget jelent.
 
@@ -96,7 +96,7 @@ amely:
     \item Minden felügyelt nyomtatót egyszerre, \textbf{több kameraállásból} figyel;
     \item \textbf{Konvolúciós neurális hálózat} segítségével automatikusan azonosítja a leggyakoribb
     FDM hibatípusokat;
-    \item A detektált hibát \textbf{kategorizálja} -- megkülönböztetve a nyomtatás közbeni
+    \item A detektált hibát \textbf{kategorizálja}, megkülönböztetve a nyomtatás közbeni
     beavatkozást igénylő, illetve az azonnali leállítást indokló eseteket;
     \item A felhasználót \textbf{valós időben értesíti} a szükséges teendőkről;
     \item \textbf{Skálázható} architektúrán alapul, hogy nyomtatófarmok esetén is alkalmazható legyen.
