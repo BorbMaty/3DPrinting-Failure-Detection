@@ -20,3 +20,12 @@ repos:
           "--config-file", ".checkov.yaml",
           "-d", "."
         ]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (unit tests)
+        entry: python3 -m pytest tests/ -q --tb=short --cov=terraform_v2/services --cov-fail-under=90
+        language: system
+        pass_filenames: false
+        always_run: true
