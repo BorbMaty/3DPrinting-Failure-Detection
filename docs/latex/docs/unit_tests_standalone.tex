@@ -1,0 +1,464 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{graphicx}
+\usepackage[left=2.5cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{t1enc}
+\usepackage[magyar]{babel}
+\linespread{1.5}
+\usepackage{mathptmx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor={blue!80!black},
+    unicode=true
+}
+\urlstyle{same}
+
+\usepackage{listings}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.70}
+
+\lstdefinestyle{codestyle}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    breakatwhitespace=false,
+    frame=single,
+    rulecolor=\color{codeframe},
+    framesep=4pt,
+    xleftmargin=8pt,
+    xrightmargin=8pt,
+    keepspaces=true,
+    columns=flexible,
+    numbers=none,
+    showspaces=false,
+    showstringspaces=false,
+    tabsize=2,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{dkgreen}\itshape,
+    stringstyle=\color{mauve},
+    extendedchars=true,
+}
+\lstset{style=codestyle, language=Python}
+
+\tolerance=2000
+\emergencystretch=3em
+
+\usepackage{url}
+\def\UrlFont{\small\ttfamily}
+\def\UrlBreaks{\do\_\do\.\do\-\do\/}
+\newcommand{\tname}[1]{\url{#1}}
+
+\begin{document}
+
+\begin{center}
+  \includegraphics[width=0.35\textwidth]{figures/images/literature/sapilogo.png} \\[1cm]
+
+  {\huge \textbf{Sapientia Erdélyi Magyar Tudományegyetem}}\\[0.3cm]
+  {\Large Marosvásárhelyi Kar}\\[0.2cm]
+  {\Large Számítástechnika szak}\\[1.2cm]
+
+  {\LARGE \textbf{3D nyomtatási folyamat monitorizálás és\\ hibadetektálás mesterséges intelligenciával}}\\[0.5cm]
+  {\large \textit{Unit Teszt Dokumentáció}}\\[1.2cm]
+
+  {\Large Készítette: Borbáth Mátyás-Levente}\\[1.2cm]
+
+  {\Large 2026}
+\end{center}
+\thispagestyle{empty}
+\newpage
+\tableofcontents
+\thispagestyle{empty}
+\newpage
+\pagestyle{plain}
+
+\section{Áttekintés}
+
+A rendszer négy fő mikroszolgáltatásból áll, és mindegyikhez készültek egységtesztek.
+A tesztelés célja az volt, hogy a szolgáltatások üzleti logikáját valódi felhős
+infrastruktúra nélkül is ellenőrizni lehessen, hiszen egy Vertex AI-végpont vagy
+Firestore-adatbázis felállítása minden egyes tesztfuttatáshoz nem kivitelezhető.
+
+Az egységtesztek négy fájlba vannak szervezve, amelyek rendre a Judge, az Alert Manager,
+a Dispatcher és a Frame Extractor szolgáltatásokat fedik le. A tesztelési keretrendszer
+a \texttt{pytest}, a lefedettség mérésére pedig a \texttt{pytest-cov} csomag szolgál.
+A projekt egy 90\%-os kódlefedettségi küszöböt ír elő, amelyet mind a pre-commit hook,
+mind a GitHub Actions CI/CD folyamat kikényszerít, vagyis ha ez az arány nem teljesül,
+a build elbukik és a kód nem kerülhet be a főágba.
+
+\begin{table}[H]
+\centering
+\caption{Tesztfájlok és a lefedett szolgáltatások}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{|p{4.8cm}|p{3cm}|p{6cm}|}
+    \hline
+    \textbf{Tesztfájl} & \textbf{Szolgáltatás} & \textbf{Lefedett funkciók} \\
+    \hline
+    \tname{test\_judge.py} & Judge (Vertex AI) & időbélyeg-generálás, Base64 dekódolás, HTTP végpontok \\
+    \hline
+    \tname{test\_alert\_manager.py} & Alert Manager (CF) & időzóna-konverzió, várakozási logika, e-mail küldés, eseményfeldolgozás \\
+    \hline
+    \tname{test\_dispatcher.py} & Dispatcher (CF) & OAuth2 token kezelés, Vertex AI kérés továbbítás \\
+    \hline
+    \tname{test\_frame\_extractor.py} & Frame Extractor (CR) & képkocka-rögzítés, JPEG kódolás, szálindítás \\
+    \hline
+\end{tabular}
+\end{table}
+
+\section{Általános tesztelési stratégia}
+
+Az egyik legnagyobb kihívás a tesztek megírásánál az volt, hogy a szolgáltatások
+erősen függnek külső könyvtáraktól és GCP-infrastruktúrától: a Judge például az
+\texttt{ultralytics} YOLO-csomagot és a Google Cloud Pub/Sub klienst használja,
+a Frame Extractor pedig az \texttt{OpenCV}-t. Ezeket valódi környezetben futtatni
+tesztelési célból túlságosan erőforrás-igényes lett volna.
+
+A megoldás az volt, hogy ezeket a függőségeket a Python \texttt{sys.modules}
+szótárán keresztül, a tényleges modulok betöltése \emph{előtt} \texttt{MagicMock}
+objektumokkal helyettesítettük. Így a tesztek nem igényelnek valódi GCP-hitelesítő
+adatokat, GPU-t, kamerát vagy internet-kapcsolatot, bármilyen gépen, másodpercek
+alatt lefutnak.
+
+A szolgáltatások forráskódját az \texttt{importlib} segítségével töltjük be
+fájlútvonal alapján, nem pedig normál \texttt{import} utasítással, mivel a
+szolgáltatások nem Python-csomagként vannak strukturálva. A Cloud Function
+belépési pontokat a \texttt{@functions\_framework.cloud\_event} dekorátor védi,
+amelyet szintén semlegesítünk egy egyszerű identity-függvénnyel, hogy a függvények
+hagyományos Python-függvényekként hívhatók legyenek a tesztekből.
+
+A Frame Extractor esetében egy külön problémát jelentett a \texttt{capture\_loop()}
+végtelen ciklusa, amelyet normál körülmények között csak a folyamat leállítása
+szakít meg. Erre egy ún. sentinel-kivétel technikát alkalmaztunk: a
+\texttt{cv2.VideoCapture} mock objektumot úgy állítottuk be, hogy a második
+hívásnál egy \texttt{\_StopLoop} kivételt dobjon, amelyet a \texttt{pytest.raises()}
+elfog, és a teszt szabályosan befejeződik.
+
+\begin{lstlisting}[caption={Sentinel-kivétel a végtelen capture ciklus megtöréséhez}]
+class _StopLoop(Exception):
+    pass
+
+fe.cv2.VideoCapture.side_effect = [cap, _StopLoop]
+
+with pytest.raises(_StopLoop):
+    fe.capture_loop("rtsp://cam/stream", "cam1")
+\end{lstlisting}
+
+\section{\texttt{test\_judge.py} - a Judge szolgáltatás tesztjei}
+
+A Judge egy Vertex AI-on futó konténer, amely a beérkező kameraképeken YOLOv8x
+modellel végez objektumdetektálást, majd az eredményt a \texttt{detections-out}
+Pub/Sub témára teszi közzé. A tesztfájl négy osztályba szervezi az ellenőrzéseket,
+amelyek a két segédfüggvényt és a HTTP kezelőt fedik le.
+
+\subsection{Időbélyeg-generálás (\texttt{TestNowIso})}
+
+A \texttt{now\_iso()} függvény minden detekciós üzenetbe belekerülő UTC időbélyeget
+állít elő ISO~8601 formátumban. A tesztek ellenőrzik, hogy a visszatérési érték
+valóban szöveg típusú, hogy az \texttt{fromisoformat()} sikeresen értelmezi,
+hogy az időzóna UTC, és hogy két egymást követő hívás eredménye nem csökkenő
+sorrendű, vagyis az időbélyeg nem „megy vissza az időben".
+
+\subsection{Base64 dekódolás (\texttt{TestSafeB64Decode})}
+
+A Pub/Sub üzenetekben a képadatok Base64 kódolással érkeznek, és a gyakorlatban
+előfordulhat, hogy a kódolt sztringből hiányoznak a kitöltő \texttt{=} karakterek,
+vagy szóközök kerülnek bele átvitel közben. A \texttt{\_safe\_b64decode()} függvény
+ezeket a hibákat automatikusan javítja.
+
+A tesztek lefedik a normál, kitöltött bemenetet, az egy és két hiányzó \texttt{=}
+karakteres eseteket, a szóközök eltávolítását, valamint azt is, hogy üres, \texttt{None}
+vagy kizárólag szóközöket tartalmazó bemenetre a függvény \texttt{ValueError}
+kivételt dob, mert egy üres kép adatai értelmetlen bemenetet jelentenének
+a YOLO-modell számára.
+
+\subsection{HTTP végpontok (\texttt{TestHandlerGet} és \texttt{TestHandlerPost})}
+
+A Judge konténer egy egyszerű HTTP szervert futtat. A GET kérések három egészségügyi
+ellenőrzési útvonalat (\texttt{/healthz}, \texttt{/health}, \texttt{/}) kezelnek
+200-as válasszal, az ismeretlen útvonalak 404-et kapnak. A POST \texttt{/predict}
+végpont kétféle kérésformátumot fogad el: a Vertex AI saját \textit{instances}
+burkolatát és a közvetlen Pub/Sub üzenetformátumot.
+
+A tesztek ellenőrzik a helyes HTTP státuszkódokat, azt, hogy sikeres inferencia
+esetén a \texttt{publish()} pontosan egyszer hívódik, és azt is, hogy ha az
+\texttt{cv2.imdecode()} \texttt{None}-t ad vissza (sérült kép), a végpont 500-as
+hibával válaszol ahelyett, hogy kivételt propagálna.
+
+\section{\texttt{test\_alert\_manager.py} - az Alert Manager tesztjei}
+
+Az Alert Manager Cloud Function a \texttt{detections-out} Pub/Sub eseményeket
+dolgozza fel: magas súlyosságú detekció esetén e-mailt küld az üzemeltetőnek,
+minden detekciót Firestore-ba ment, és kezeli a GCP-költségvetési figyelmeztetéseket
+is. Ez a rendszer legösszetettebb üzleti logikáját tartalmazó komponense,
+ezért a legtöbb teszteset is ehhez tartozik, összesen 29 darab, hat osztályba szervezve.
+
+\subsection{Időzóna-konverzió (\texttt{TestHumanTime})}
+
+Az e-mail értesítésekben a detekció időpontja olvasható formátumban jelenik meg,
+Bukarest helyi ideje szerint (Europe/Bucharest, UTC+2 nyáron). A \texttt{human\_time()}
+függvény végzi ezt az átalakítást. A tesztek ellenőrzik az UTC $\to$ helyi idő
+konverziót (17:38 UTC esetén 19:38-at kell kapnunk), a dátum részeinek meglétét
+a kimenetben, és azt, hogy érvénytelen bemenetre a függvény az eredeti sztringet
+adja vissza hiba helyett.
+
+\subsection{Várakozási logika (\texttt{TestIsOnCooldown} és \texttt{TestSetCooldown})}
+
+Annak érdekében, hogy egy folyamatosan fennálló hiba ne árassza el az üzemeltetőt
+e-mailekkel, a rendszer kameránként 60 másodperces várakozási időszakot alkalmaz.
+Az utolsó küldés időpontját a Firestore tárolja \texttt{last\_sent} mezőként,
+kamera-azonosítóhoz rendelve.
+
+Az \texttt{is\_on\_cooldown()} tesztjei lefedik azt az esetet, amikor a dokumentum
+még nem létezik (nincs várakozási idő), amikor 10 másodperccel ezelőtt küldtünk
+(aktív várakozási idő), 120 másodperccel ezelőtt (lejárt), és a határesetet: pontosan
+59 másodperccel ezelőtt küldtünk, ami még mindig aktívnak számít, mivel az
+intervallum zárt.
+
+A \texttt{set\_cooldown()} tesztjei ellenőrzik, hogy a Firestore \texttt{set()}
+művelete meghívódik, hogy az elmentett időbélyeg érvényes ISO~8601 formátumú,
+és hogy a dokumentum kulcsa a kamera azonosítója.
+
+\subsection{E-mail küldés (\texttt{TestSendEmail})}
+
+A \texttt{send\_email()} az \texttt{smtplib.SMTP\_SSL} osztályon keresztül a
+Gmail SMTP szerverhez csatlakozik (port 465), és HTML formátumú e-mailt küld.
+A tesztek ellenőrzik a szerver és port helyes értékét, a bejelentkezéshez
+használt hitelesítő adatokat, a tárgy megjelenését a nyers üzenetben, és azt
+is, hogy SMTP kapcsolódási hiba esetén a kivétel nem propagálódik tovább,
+egy e-mail küldési hiba nem akadályozhatja meg az egyébként sikeres detekció
+mentését Firestore-ba.
+
+\subsection{Detekciós esemény feldolgozás (\texttt{TestHandleDetection})}
+
+A \texttt{handle\_detection()} a rendszer legösszetettebb függvénye: szűri a
+konfidencia-küszöb alatti detekciókát, megkülönbözteti a magas
+(\texttt{spaghetti}, \texttt{not\_sticking}, \texttt{layer\_shift}, \texttt{warping})
+és alacsony súlyosságú hibaosztályokat, kezeli a várakozási időszakot, és Firestore-ba
+írja az eseményeket. Ennek megfelelően ez az osztály tartalmazza a legtöbb
+tesztesetet.
+
+A tesztek ellenőrzik, hogy 0,10-es konfidenciájú detekció nem kerül mentésre és
+nem vált ki e-mailt, hogy 0,90-es konfidenciánál a Firestore \texttt{add()}
+pontosan egyszer hívódik, hogy alacsony súlyosságú osztály (pl. \texttt{stringing})
+esetén nem megy e-mail, hogy magas súlyosságú osztály (pl. \texttt{warping}) esetén
+megy, és hogy a tárgy tartalmazza a kamera azonosítóját. Külön tesztesetek fedik
+le az összes magas súlyosságú osztályt egyenként, a pontos küszöbértéket (0,35
+éppen átmegy), a küszöb alatti értéket (0,3499 kiszűrődik), az üres detekciós
+listát, és a hibás Base64 adatot tartalmazó eseményt, amely nem propagálhat
+kivételt.
+
+\subsection{Költségvetési figyelmeztetés (\texttt{TestHandleBudgetAlert})}
+
+A \texttt{handle\_budget\_alert()} a GCP Budget API értesítéseit dolgozza fel,
+Firestore-ba menti az aktuális összeget és a küszöbértéket, és várakozási időn kívül
+e-mailt küld. A tesztek ellenőrzik a Firestore dokumentum mezőit és értékeit,
+az e-mail küldését várakozási időn kívül, az e-mail elmaradását várakozási időn belül,
+és a hibás bemenetre való robusztus viselkedést.
+
+\section{\texttt{test\_dispatcher.py} - a Dispatcher tesztjei}
+
+A Dispatcher Cloud Function a \texttt{frames-in} Pub/Sub témáról érkező képkockákat
+a Vertex AI Online Prediction végpontjára továbbítja. Mivel a Vertex AI csak érvényes
+OAuth2 tokent tartalmazó kéréseket fogad el, a Dispatcher maga kezeli a
+hitelesítési token frissítését.
+
+\subsection{OAuth2 token kezelés (\texttt{TestGetAuthHeader})}
+
+A \texttt{\_get\_auth\_header()} egy \texttt{Authorization: Bearer} fejlécet ad
+vissza, amelyet a Vertex AI kérésbe kell beilleszteni. Ha a tárolt token érvényes,
+nem kell frissíteni; ha lejárt, a \texttt{refresh()} automatikusan meghívódik.
+A tesztek mindhárom esetet lefedik: érvényes token esetén nem hívódik \texttt{refresh()},
+lejárt token esetén pontosan egyszer hívódik, és a visszaadott fejléc tartalmazza
+az \texttt{Authorization: Bearer} és \texttt{Content-Type: application/json}
+mezőket.
+
+\subsection{Vertex AI kérés küldése (\texttt{TestDispatchFrame})}
+
+A \texttt{dispatch\_frame()} dekódolja a Pub/Sub üzenetet, és összeállítja a
+Vertex AI \textit{instances} burkolatot, amely tartalmazza a képadatot
+(\texttt{data\_b64}), a kamera azonosítóját és a szekvenciaszámot.
+
+Fontos viselkedés, hogy ha a payload nem tartalmaz képadatot, a függvény
+nem küld HTTP kérést. HTTP hiba esetén viszont a kivétel szándékosan
+propagálódik, hogy a Pub/Sub automatikus újrapróbálkozási mechanizmusa
+aktiválódjon, ez a megbízhatóság szempontjából kulcsfontosságú tervezési döntés.
+A tesztek azt is ellenőrzik, hogy az \texttt{image\_b64} mező visszaesési lehetőségként
+elfogadott, és a kérésbe \texttt{data\_b64} kulcsként kerül be.
+
+\section{\texttt{test\_frame\_extractor.py} - a Frame Extractor tesztjei}
+
+A Frame Extractor Cloud Run konténer több RTSP kamerafolyamot olvas párhuzamosan,
+a képkockákat JPEG formátumba tömöríti, Base64-gyel kódolja, és közzéteszi a
+\texttt{frames-in} Pub/Sub témára.
+
+\subsection{Képkocka-rögzítési ciklus (\texttt{TestCaptureLoop})}
+
+A \texttt{capture\_loop()} egy adott kamerafolyamot folyamatosan olvas. Ha a stream
+nem nyílik meg, 5 másodpercet vár és újrapróbálkozik; ha egy képkocka olvasása
+sikertelen, felszabadítja az erőforrásokat (\texttt{cap.release()}) és újranyit.
+
+A tesztek ellenőrzik az újrapróbálkozást és az 5 másodperces várakozást, a
+\texttt{release()} hívását sikertelen olvasás esetén, a Pub/Sub \texttt{publish()}
+meghívását sikeres képkocka esetén, a közzétett JSON kötelező mezőit
+(\texttt{camera\_id}, \texttt{seq}, \texttt{ts}, \texttt{data\_b64}), és azt,
+hogy a szekvenciaszám három egymást követő képkockánál 0, 1, 2 értékeket vesz fel.
+
+\subsection{Szálindítás és konfiguráció elemzése (\texttt{TestMainParsing})}
+
+A \texttt{main()} beolvassa az RTSP URL-eket és kamera-azonosítókat a környezeti
+változókból, és minden kamerához külön szálat indít. Ha az RTSP URL-ek listája
+üres, \texttt{RuntimeError} keletkezik, mert a konténernek nincs mit rögzítenie.
+Ha kevesebb azonosítót adunk meg, mint ahány URL van, a hiányzók automatikusan
+\texttt{cam1}, \texttt{cam2} stb. neveket kapnak.
+
+\subsection{Időzítés és kódolás}
+
+A \texttt{CAPTURE\_FPS} paraméter szabályozza a rögzítés frekvenciáját. Ha egy
+képkocka feldolgozása gyorsabb az intervallumnál, a ciklus \texttt{time.sleep()}-pel
+várja be a maradék időt; ha lassabb, nincs lassítási \texttt{sleep()}, a ciklus
+azonnal folytatódik.
+
+A kódolási tesztek ellenőrzik, hogy a \texttt{cv2.resize()} a konfigurált
+\texttt{FRAME\_WIDTH} és \texttt{FRAME\_HEIGHT} értékekkel hívódik, és hogy a
+\texttt{cv2.imencode()} \texttt{.jpg} formátumot és a konfigurált
+\texttt{JPEG\_QUALITY} értéket alkalmazza.
+
+\section{CI/CD integráció}
+
+A projekt négy GitHub Actions workflow-t tartalmaz, amelyek különböző eseményekre
+aktiválódnak. Mindegyik workflow csak azokat a fájlokat figyeli, amelyek az adott
+feladathoz valóban relevánsak, ezt az útvonalszűrés (\texttt{paths}) biztosítja,
+így például egy dokumentációs módosítás nem indít el feleslegesen Terraform-futtatást.
+
+\subsection{Egységtesztek futtatása (\texttt{python-tests.yml})}
+
+Ez a workflow az egységtesztek szempontjából a legfontosabb. Minden olyan
+\texttt{push} és \texttt{pull\_request} eseményre aktiválódik a \texttt{main}
+ágon, amely a \texttt{terraform\_v2/services/} vagy a \texttt{tests/} mappát érinti.
+
+A futtatás lépései a következők: a Python 3.12-es verzióját állítja be pip-gyorsítótárral,
+telepíti a \texttt{requirements-test.txt} függőségeit, majd lefuttatja a teljes
+tesztcsomagot a következő paraméterekkel:
+
+\begin{lstlisting}[caption={A tesztfuttatás parancsa a CI-ban}, language=bash]
+python -m pytest tests/ -v \
+  --tb=short \
+  --cov=terraform_v2/services \
+  --cov-report=term-missing \
+  --cov-report=xml \
+  --cov-fail-under=90
+\end{lstlisting}
+
+A \texttt{--cov-fail-under=90} kapcsoló azt jelenti, hogy ha a kódlefedettség 90\%
+alá esik, a build elbukik, és a kód nem kerülhet be a főágba. A lefedettségi
+jelentés XML formátumban is előáll (\texttt{coverage.xml}), amelyet a workflow
+14 napig tárol artifact-ként, ez lehetővé teszi a lefedettség történetének
+utólagos vizsgálatát.
+
+\subsection{Infrastruktúra-ellenőrzés és -telepítés (\texttt{terraform.yml})}
+
+Ez a workflow a Terraform-konfigurációt validálja és alkalmazza. Négy egymásra
+épülő feladatból áll.
+
+Az első feladat a \textbf{lint}, amely két eszközt futtat egymás után. A
+\texttt{terraform fmt -check} ellenőrzi, hogy minden \texttt{.tf} fájl a
+Terraform által előírt formátumkövetelményeknek megfelelően van-e tagolva.
+Ezután a \texttt{tflint} elemzi a konfigurációt potenciális hibák és rossz
+gyakorlatok szempontjából, például elavult erőforrás-attribútumok vagy
+nem hatékony változóhasználat kapcsán. Fontos megjegyezni, hogy ezek
+\emph{nem} egységtesztek: nem az alkalmazás logikáját, hanem az infrastruktúra-leíró
+kód minőségét és stílusát ellenőrzik.
+
+A második feladat a \textbf{Checkov biztonsági vizsgálat}, amely a Terraform-konfigurációt
+ismert biztonsági és megfelelőségi problémák szempontjából elemzi, például
+nyilvánosan elérhető tárolóvödrök, titkosítás hiánya vagy nem megfelelő jogosultságok.
+Ez sem egységteszt, hanem egy infrastruktúra-biztonsági szkennelés; a
+\texttt{soft\_fail: true} beállítás miatt figyelmeztetéseket ad, de nem akasztja
+meg a pipeline-t.
+
+Ha a lint és a Checkov sikeresen lefut, a \textbf{Terraform Plan} feladat
+GCP-hitelesítéssel (\texttt{GCP\_SA\_KEY} titok) elvégzi az inicializálást
+és a tervkészítést. Pull Request esetén a terv kimenetét automatikusan kommentként
+fűzi a PR-hez, hogy a felülvizsgálók lássák, milyen változások kerülnének
+élesbe. Ha a terv hibás, a feladat sikertelennek minősül.
+
+A \textbf{Terraform Apply} feladat kizárólag akkor fut, ha a változtatás a
+\texttt{main} ágra érkezik közvetlen \texttt{push} esemény formájában (tehát
+nem PR-ból). Ez biztosítja, hogy az infrastruktúra csak felülvizsgált és
+jóváhagyott kód alapján frissüljön.
+
+\subsection{Judge konténer build és push (\texttt{docker-judge.yml})}
+
+Ha a Judge szolgáltatás kódja megváltozik, ez a workflow letölti a YOLO-modell
+súlyait (\texttt{best.pt}) a GCS-vödörből, majd felépíti a Docker-képet.
+A kép két taggel kerül feltöltésre az Artifact Registry-be: a commit SHA-val
+(a pontos verzió visszakereshetőségéhez) és a \texttt{latest} taggel.
+A push csak \texttt{main} ágra érkező közvetlen kommit esetén történik meg, Pull Request esetén csak a build lép, a push nem.
+
+\subsection{Dolgozat fordítása (\texttt{compileLatex.yml})}
+
+Ha a \texttt{docs/latex/} mappában változás történik, a workflow LaTeX-csomagokat
+telepít, háromszor futtatja a \texttt{pdflatex}-et (a kereszthivatkozások feloldásához),
+Ghostscript-tel tömöríti a PDF-et, majd visszacommitálja a lefordított dokumentumot
+a repóba. A commit üzenetébe bekerül a \texttt{[skip ci]} jelzés, hogy ez a
+commit ne indítson el újabb fordítási ciklust.
+
+\section{Összefoglalás}
+
+A projekt összesen 70 egységtesztet tartalmaz, amelyek a négy mikroszolgáltatás
+üzleti logikájának kritikus részeit fedik le. A tesztek kizárólag mockolással
+dolgoznak, így nem igényelnek valódi GCP-infrastruktúrát, és helyi gépen is
+futtathatók. A 90\%-os lefedettségi küszöb betartása folyamatosan ellenőrzött,
+és a CI/CD folyamat részeként minden változtatásnál automatikusan lefut.
+
+\begin{table}[H]
+\centering
+\caption{Tesztosztályok és tesztesetek száma szolgáltatásonként}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{|p{4.5cm}|p{4.5cm}|c|}
+    \hline
+    \textbf{Tesztfájl} & \textbf{Tesztosztály} & \textbf{Tesztek száma} \\
+    \hline
+    \multirow{4}{4.5cm}{\tname{test\_judge.py}}
+        & \tname{TestNowIso} & 4 \\
+        & \tname{TestSafeB64Decode} & 7 \\
+        & \tname{TestHandlerGet} & 4 \\
+        & \tname{TestHandlerPost} & 5 \\
+    \hline
+    \multirow{6}{4.5cm}{\tname{test\_alert\_manager.py}}
+        & \tname{TestHumanTime} & 3 \\
+        & \tname{TestIsOnCooldown} & 4 \\
+        & \tname{TestSetCooldown} & 3 \\
+        & \tname{TestSendEmail} & 4 \\
+        & \tname{TestHandleDetection} & 11 \\
+        & \tname{TestHandleBudgetAlert} & 4 \\
+    \hline
+    \multirow{2}{4.5cm}{\tname{test\_dispatcher.py}}
+        & \tname{TestGetAuthHeader} & 3 \\
+        & \tname{TestDispatchFrame} & 5 \\
+    \hline
+    \multirow{4}{4.5cm}{\tname{test\_frame\_extractor.py}}
+        & \tname{TestCaptureLoop} & 5 \\
+        & \tname{TestMainParsing} & 4 \\
+        & \tname{TestCaptureLoopTiming} & 2 \\
+        & \tname{TestCaptureLoopEncoding} & 2 \\
+    \hline
+    \multicolumn{2}{|l|}{\textbf{Összesen}} & \textbf{70} \\
+    \hline
+\end{tabular}
+\end{table}
+
+\end{document}
+

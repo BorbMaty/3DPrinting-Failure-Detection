@@ -1,5 +1,8 @@
 name: Compile thesis
-on: [push]
+on:
+  push:
+    paths:
+      - 'docs/latex/**'
 
 permissions:
   contents: write
