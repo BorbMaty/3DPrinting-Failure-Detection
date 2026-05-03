@@ -13,8 +13,8 @@ PROJECT_ID   = os.environ["GCP_PROJECT"]
 FRAMES_TOPIC = os.environ["FRAMES_TOPIC"]
 CAPTURE_FPS  = float(os.environ.get("CAPTURE_FPS", "2"))
 JPEG_QUALITY = int(os.environ.get("JPEG_QUALITY", "70"))
-FRAME_WIDTH  = int(os.environ.get("FRAME_WIDTH", "640"))
-FRAME_HEIGHT = int(os.environ.get("FRAME_HEIGHT", "480"))
+FRAME_WIDTH  = int(os.environ.get("FRAME_WIDTH", "1280"))
+FRAME_HEIGHT = int(os.environ.get("FRAME_HEIGHT", "960"))
 
 # Comma-separated list of RTSP URLs, e.g. "rtsp://host/cam1,rtsp://host/cam2"
 RTSP_URLS_ENV = os.environ.get("RTSP_URLS", os.environ.get("RTSP_URL", ""))

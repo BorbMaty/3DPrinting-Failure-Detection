@@ -87,7 +87,20 @@
 \end{frame}
 }
 
-% ── Slide 2: Motiváció ────────────────────────────────────────────────────────
+% ── Slide 2: Áttekintés ───────────────────────────────────────────────────────
+\begin{frame}{Áttekintés}
+  \begin{enumerate}
+    \setlength\itemsep{0.65em}
+    \item Problémafelvetés és motiváció
+    \item Adathalmaz és tanítási stratégia
+    \item Modell teljesítménye
+    \item Rendszerarchitektúra és adatfolyam
+    \item Élő bemutató
+    \item Összefoglalás és jövőbeli irányok
+  \end{enumerate}
+\end{frame}
+
+% ── Slide 3: Motiváció ────────────────────────────────────────────────────────
 \begin{frame}{Miért van szükség automatizált monitorozásra?}
   \begin{columns}[T]
     \column{0.52\textwidth}
@@ -106,7 +119,36 @@
   \end{columns}
 \end{frame}
 
-% ── Slide 3: 9 hibaosztály ────────────────────────────────────────────────────
+% ── Slide 4: Két súlyossági szint ────────────────────────────────────────────
+\begin{frame}{9 hibaosztály – két súlyossági szint}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{alertblock}{Magas súlyosság – azonnali beavatkozás}
+        \begin{itemize}
+          \setlength\itemsep{0.4em}
+          \item Spagetti
+          \item Nem tapadó réteg
+          \item Réteg-eltolódás
+          \item Vetemedés
+        \end{itemize}
+        \vspace{0.3em}
+        \centering{\small $\rightarrow$ \textbf{e-mail értesítés}}
+      \end{alertblock}
+    \column{0.48\textwidth}
+      \begin{exampleblock}{Alacsony súlyosság – minőségromlás}
+        \begin{itemize}
+          \setlength\itemsep{0.4em}
+          \item További 5 hibaosztály
+          \item Operátori döntést igényelnek
+          \item Fokozatos minőségromlást okoznak
+        \end{itemize}
+        \vspace{0.3em}
+        \centering{\small $\rightarrow$ \textbf{csak naplózás (Firestore)}}
+      \end{exampleblock}
+  \end{columns}
+\end{frame}
+
+% ── Slide 5: 9 hibaosztály ────────────────────────────────────────────────────
 % All images from training_samples/ (correct orientation, consistent quality).
 \begin{frame}{9 detektált hibaosztály}
   \centering
@@ -138,7 +180,7 @@
   \end{tabular}
 \end{frame}
 
-% ── Slide 4: Adathalmaz ───────────────────────────────────────────────────────
+% ── Slide 6: Adathalmaz ───────────────────────────────────────────────────────
 \begin{frame}{Adathalmaz összeállítása}
   \begin{columns}[T]
     \column{0.54\textwidth}
@@ -171,7 +213,7 @@
     \end{columns}
 \end{frame}
 
-% ── Slide 5: YOLOv8x + kétfázisú tanítás ─────────────────────────────────────
+% ── Slide 7: YOLOv8x + kétfázisú tanítás ─────────────────────────────────────
 \begin{frame}{YOLOv8x – Kétfázisú tanítási stratégia}
   \begin{columns}[T]
     \column{0.52\textwidth}
@@ -201,13 +243,15 @@
         \end{itemize}
       \end{alertblock}
       \vspace{0.4em}
-      \begin{exampleblock}{Konfidenciaküszöb}
-        \centering 35\% – csúcs F1 $\approx$ 0.38-nál
+      \begin{exampleblock}{Konfidenciaküszöb: 35\%}
+        \centering
+        Leggyengébb osztály csúcs F1 $\approx$ 0{,}38\\
+        {\footnotesize(makró F1 csúcs = \textbf{0{,}88})}
       \end{exampleblock}
     \end{columns}
 \end{frame}
 
-% ── Slide 6: Tanítási görbék ──────────────────────────────────────────────────
+% ── Slide 8: Tanítási görbék ──────────────────────────────────────────────────
 \begin{frame}{Tanítási görbék – 100 epok}
   \centering
   \includegraphics[width=0.88\textwidth,keepaspectratio]{results/y8x_phase2_12803/results.png}
@@ -220,19 +264,15 @@
   }
 \end{frame}
 
-% ── Slide 7: PR görbe + Konfúziós mátrix ─────────────────────────────────────
-\begin{frame}{Precision-Recall görbe \& Konfúziós mátrix}
-  \begin{columns}[c]
-    \column{0.54\textwidth}
-      \centering
-      \includegraphics[width=\textwidth,keepaspectratio]{results/y8x_phase2_12803/BoxPR_curve.png}
-    \column{0.44\textwidth}
-      \centering
-      \includegraphics[width=\textwidth,keepaspectratio]{results/y8x_phase2_12803/confusion_matrix_normalized.png}
-  \end{columns}
+% ── Slide 9: Konfúziós mátrix + PR görbe ─────────────────────────────────────
+\begin{frame}{Konfúziós mátrix \& Precision-Recall görbe}
+  \vspace*{-0.3em}
+  \centering
+  \includegraphics[width=0.49\textwidth,keepaspectratio]{results/y8x_phase2_12803/confusion_matrix_normalized.png}\hfill
+  \includegraphics[width=0.49\textwidth,keepaspectratio]{results/y8x_phase2_12803/BoxPR_curve.png}
 \end{frame}
 
-% ── Slide 8: Validációs predikciók ────────────────────────────────────────────
+% ── Slide 10: Validációs predikciók ───────────────────────────────────────────
 \begin{frame}{Validációs predikciók – modell éles adatokon}
   \centering
   \includegraphics[width=0.90\textwidth,keepaspectratio]{results/y8x_phase2_12803/val_batch0_pred.jpg}
@@ -241,7 +281,7 @@
   {\small A bounding boxok pontosan illeszkednek a hibaterületekre, több hiba egyidejűleg is detektálható}
 \end{frame}
 
-% ── Slide 9: Összesített teljesítmény ────────────────────────────────────────
+% ── Slide 11: Összesített teljesítmény ───────────────────────────────────────
 \begin{frame}{Összesített teljesítmény}
   \begin{columns}[c]
     \column{0.48\textwidth}
@@ -281,13 +321,13 @@
   \end{columns}
 \end{frame}
 
-% ── Slide 10: Rendszerarchitektúra ────────────────────────────────────────────
+% ── Slide 12: Rendszerarchitektúra ────────────────────────────────────────────
 \begin{frame}{Edge-Cloud hibrid architektúra}
   \centering
   \includegraphics[width=0.90\textwidth,keepaspectratio]{literature/systemarch.jpg}
 \end{frame}
 
-% ── Slide 11: Adatfolyam ──────────────────────────────────────────────────────
+% ── Slide 13: Adatfolyam ──────────────────────────────────────────────────────
 \begin{frame}{Az adatfolyam lépései}
   \vspace{0.2em}
   \begin{enumerate}
@@ -310,25 +350,16 @@
   \end{block}
 \end{frame}
 
-% ── Slide 12: Dashboard ───────────────────────────────────────────────────────
+% ── Slide 14: Dashboard ───────────────────────────────────────────────────────
 \begin{frame}{Élő dashboard}
-  \begin{columns}[c]
-    \column{0.5\textwidth}
-      \centering
-      \includegraphics[width=\textwidth,keepaspectratio]{literature/dash_normal.png}\\[0.3em]
-      {\small Normál állapot}
-    \column{0.5\textwidth}
-      \centering
-      \includegraphics[width=\textwidth,keepaspectratio]{literature/dash_high.png}\\[0.3em]
-      {\small\textcolor{alertred}{\textbf{Riasztás}} – piros keret}
-  \end{columns}
+  \centering
+  \includegraphics[width=0.90\textwidth,keepaspectratio]{literature/full_dashboard.png}
 
   \vspace{0.35em}
-  \centering
   {\footnotesize 3 élő WebRTC kamerastream + valós idejű detekciós napló (Firestore onSnapshot)}
 \end{frame}
 
-% ── Slide 13: Összefoglalás + Jövőbeli irányok ───────────────────────────────
+% ── Slide 15: Összefoglalás + Jövőbeli irányok ───────────────────────────────
 \begin{frame}{Összefoglalás és jövőbeli irányok}
   \begin{columns}[T]
     \column{0.5\textwidth}
@@ -356,7 +387,20 @@
   \end{columns}
 \end{frame}
 
-% ── Slide 14: Köszönet ────────────────────────────────────────────────────────
+% ── Slide 16: Demó videó ──────────────────────────────────────────────────────
+\begin{frame}{Élő bemutató}
+  \centering
+  % TODO: Embed or link demo video showing full end-to-end system
+  \setlength\fboxsep{0.5cm}
+  \fbox{\begin{minipage}{0.84\textwidth}
+    \vspace{1.7cm}
+    \centering\textcolor{gray!60}{\large [Demó videó – teljes rendszer, elejétől végéig – TODO]}\\[0.5em]
+    {\small\textcolor{gray!50}{Raspberry Pi $\rightarrow$ Vertex AI $\rightarrow$ Dashboard $\rightarrow$ E-mail riasztás}}
+    \vspace{1.7cm}
+  \end{minipage}}
+\end{frame}
+
+% ── Slide 17: Köszönet ────────────────────────────────────────────────────────
 \begin{frame}[plain]
   \begin{beamercolorbox}[wd=\paperwidth,ht=2.2cm,dp=0pt,center]{frametitle}
     \vspace{0.6cm}
