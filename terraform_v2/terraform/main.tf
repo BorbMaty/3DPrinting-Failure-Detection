@@ -432,12 +432,35 @@ resource "google_pubsub_topic_iam_member" "dispatcher_detections_publisher" {
   member  = "serviceAccount:${google_service_account.dispatcher.email}"
 }
 
-# Vertex AI prediction container (judge) → publish detections-out
+# Vertex AI service agent → publish detections-out
 resource "google_pubsub_topic_iam_member" "vertex_ai_detections_publisher" {
   project = var.project_id
   topic   = google_pubsub_topic.detections.name
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
+}
+
+# Vertex AI custom code service agent → publish detections-out
+resource "google_pubsub_topic_iam_member" "vertex_ai_cc_detections_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.detections.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-aiplatform-cc.iam.gserviceaccount.com"
+}
+
+# Allow Vertex AI service agent to impersonate judge-svc when running prediction container
+resource "google_service_account_iam_member" "vertex_ai_judge_svc_user" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/judge-svc@${var.project_id}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
+}
+
+# Default compute SA used by judge custom prediction container → publish detections-out
+resource "google_pubsub_topic_iam_member" "compute_sa_detections_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.detections.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
 # ── Source bundle ─────────────────────────────────────────────────────────────

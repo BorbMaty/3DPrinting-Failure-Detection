@@ -14,7 +14,7 @@ FRAMES_TOPIC = os.environ["FRAMES_TOPIC"]
 CAPTURE_FPS  = float(os.environ.get("CAPTURE_FPS", "2"))
 JPEG_QUALITY = int(os.environ.get("JPEG_QUALITY", "70"))
 FRAME_WIDTH  = int(os.environ.get("FRAME_WIDTH", "1280"))
-FRAME_HEIGHT = int(os.environ.get("FRAME_HEIGHT", "960"))
+FRAME_HEIGHT = int(os.environ.get("FRAME_HEIGHT", "720"))
 
 # Comma-separated list of RTSP URLs, e.g. "rtsp://host/cam1,rtsp://host/cam2"
 RTSP_URLS_ENV = os.environ.get("RTSP_URLS", os.environ.get("RTSP_URL", ""))
@@ -53,7 +53,10 @@ def capture_loop(rtsp_url: str, camera_id: str):
                 cap.release()
                 break
 
-            frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+            h0, w0 = frame.shape[:2]
+            if w0 > FRAME_WIDTH or h0 > FRAME_HEIGHT:
+                scale = min(FRAME_WIDTH / w0, FRAME_HEIGHT / h0)
+                frame = cv2.resize(frame, (int(w0 * scale), int(h0 * scale)))
             _, buf = cv2.imencode(
                 ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
             )

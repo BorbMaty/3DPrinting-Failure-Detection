@@ -1,0 +1,4 @@
+google-cloud-pubsub>=2.20
+ultralytics>=8.3
+opencv-python>=4.9
+numpy

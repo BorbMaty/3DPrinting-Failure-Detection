@@ -14,6 +14,9 @@ PROJECT_ID = os.environ["GCP_PROJECT"]
 DETECTIONS_TOPIC = os.environ["DETECTIONS_TOPIC"]
 MODEL_PATH = os.environ.get("MODEL_PATH", "/app/best.pt")
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.35"))
+# Require a class to appear in this many consecutive frames before publishing.
+# Filters single-frame false positives (cables/wires mistaken for spaghetti, etc.)
+STREAK_REQUIRED = int(os.environ.get("STREAK_REQUIRED", "2"))
 
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, DETECTIONS_TOPIC)
@@ -21,6 +24,9 @@ topic_path = publisher.topic_path(PROJECT_ID, DETECTIONS_TOPIC)
 print(f"Loading YOLO model from {MODEL_PATH}...", flush=True)
 model = YOLO(MODEL_PATH)
 print(f"Model loaded. Classes: {model.names}", flush=True)
+
+# Per-camera streak counters: {camera_id: {label: consecutive_frame_count}}
+_streaks: dict[str, dict[str, int]] = {}
 
 
 def now_iso():
@@ -102,15 +108,33 @@ class Handler(BaseHTTPRequestHandler):
                     "h": round((y2 - y1) / h, 4),
                 })
 
+            # ── Streak filter ─────────────────────────────────────────────────
+            cam_streaks = _streaks.setdefault(camera_id, {})
+            detected_labels = {d["label"] for d in detections}
+
+            # Increment streak for seen labels, reset for absent ones
+            for label in list(cam_streaks):
+                if label not in detected_labels:
+                    cam_streaks[label] = 0
+            for label in detected_labels:
+                cam_streaks[label] = cam_streaks.get(label, 0) + 1
+
+            # Only keep detections whose class has hit the required streak
+            confirmed = [d for d in detections if cam_streaks.get(d["label"], 0) >= STREAK_REQUIRED]
+
             out = {
                 "ts": now_iso(),
                 "camera_id": camera_id,
                 "seq": seq,
-                "detections": detections,
+                "detections": confirmed,
             }
 
-            publisher.publish(topic_path, json.dumps(out).encode("utf-8"))
-            print(f"camera={camera_id} seq={seq} detections={len(detections)}", flush=True)
+            if confirmed:
+                future = publisher.publish(topic_path, json.dumps(out).encode("utf-8"))
+                msg_id = future.result()  # blocks until ack; raises on failure
+                print(f"camera={camera_id} seq={seq} confirmed={len(confirmed)} msg_id={msg_id}", flush=True)
+            else:
+                print(f"camera={camera_id} seq={seq} detections={len(detections)} streak_filtered", flush=True)
 
             # Vertex AI expects {"predictions": [...]}
             self.send_response(200)

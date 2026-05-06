@@ -1,0 +1,20 @@
+  Undeploy (you need the deployed model ID, not the registry model ID):
+  # First get the deployed model ID from the describe output above (deployedModels[].id)                                                                                                                        
+  gcloud ai endpoints undeploy-model 6900414029643120640 \                              
+    --region=europe-west1 --project=printermonitor-488112 \                                                                                                                                                     
+    --deployed-model-id=DEPLOYED_MODEL_ID                        
+                                                
+
+List deployed models on the endpoint:                          
+  gcloud ai endpoints describe 6900414029643120640 --region=europe-west1 --project=printermonitor-488112 --format="json(deployedModels)"    
+
+
+● # Step 1: get the deployed model ID                                                            
+  gcloud ai endpoints describe 6900414029643120640 \                                               
+    --region=europe-west1 --project=printermonitor-488112 \                                        
+    --format="json(deployedModels)"                                                                
+                                                                                                   
+  # Step 2: undeploy (replace DEPLOYED_MODEL_ID with the id field from above)                      
+  gcloud ai endpoints undeploy-model 6900414029643120640 \       
+    --region=europe-west1 --project=printermonitor-488112 \                                        
+    --deployed-model-id=DEPLOYED_MODEL_ID  

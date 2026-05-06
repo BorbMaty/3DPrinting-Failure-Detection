@@ -13,8 +13,8 @@ from google.cloud import firestore
 # ── Config ────────────────────────────────────────────────────────────────────
 PROJECT_ID           = os.environ.get("GCP_PROJECT", "printermonitor-488112")
 FIRESTORE_COLLECTION = os.environ.get("FIRESTORE_COLLECTION", "alerts")
-CONF_THRESHOLD       = float(os.environ.get("CONF_THRESHOLD", "0.35"))
-COOLDOWN_SECONDS     = int(os.environ.get("COOLDOWN_SECONDS", "60"))
+CONF_THRESHOLD       = float(os.environ.get("CONF_THRESHOLD", "0.20"))
+COOLDOWN_SECONDS     = int(os.environ.get("COOLDOWN_SECONDS", "300"))
 
 GMAIL_ADDRESS      = os.environ["GMAIL_ADDRESS"]
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
@@ -107,7 +107,7 @@ def handle_detection(cloud_event):
 
     # Send email for high-severity detections only, with cooldown
     high_sev = [d for d in detections if d.get("label") in HIGH_SEV]
-    if high_sev and not is_on_cooldown(camera_id):
+    if high_sev and not is_on_cooldown("global_email"):
         rows = "".join(
             f"<tr><td>{d['label']}</td><td>{d.get('confidence', 0)*100:.0f}%</td></tr>"
             for d in high_sev
@@ -123,7 +123,7 @@ def handle_detection(cloud_event):
         <p><a href="https://printermonitor-488112.web.app">Open Dashboard</a></p>
         """
         send_email(f"🚨 Printer Alert — {camera_id}", body)
-        set_cooldown(camera_id)
+        set_cooldown("global_email")
 
 
 # ── Budget alert handler ──────────────────────────────────────────────────────

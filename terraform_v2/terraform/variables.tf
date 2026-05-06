@@ -20,7 +20,7 @@ variable "model_gcs_bucket" {
 variable "conf_threshold" {
   description = "YOLO confidence threshold for detections"
   type        = string
-  default     = "0.35"
+  default     = "0.20"
 }
 
 

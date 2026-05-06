@@ -51,6 +51,7 @@ cd terraform_v2/terraform
 terraform init
 terraform plan -var="gmail_address=YOU@gmail.com" -var="gmail_app_password=YOUR_APP_PASSWORD"
 terraform apply
+# Note: terraform apply runs automatically on push to main via CI/CD
 
 # Build and push Judge container
 docker build -t europe-west1-docker.pkg.dev/printermonitor-488112/printermonitor/judge:latest \
@@ -58,6 +59,59 @@ docker build -t europe-west1-docker.pkg.dev/printermonitor-488112/printermonitor
 ```
 
 **Cost warning:** The T4 GPU for Vertex AI costs ~$37/day. Always undeploy after testing.
+
+### Vertex AI Endpoint (manual — not managed by Terraform)
+
+**Endpoint ID:** `6900414029643120640`
+
+```bash
+# Upload a new model version (increment vN)
+gcloud ai models upload \
+  --region=europe-west1 --project=printermonitor-488112 \
+  --display-name=yolov8x-printermonitor-vN \
+  --container-image-uri=europe-west1-docker.pkg.dev/printermonitor-488112/printermonitor/judge:latest \
+  --container-ports=8080 \
+  --container-health-route=/healthz \
+  --container-predict-route=/predict \
+  --container-env-vars=GCP_PROJECT=printermonitor-488112,DETECTIONS_TOPIC=detections-out,MODEL_PATH=/app/best.pt,CONF_THRESHOLD=0.35,STREAK_REQUIRED=3
+
+# Deploy to endpoint — MUST use --service-account=judge-svc (required for Pub/Sub publish permission)
+gcloud ai endpoints deploy-model 6900414029643120640 \
+  --region=europe-west1 --project=printermonitor-488112 \
+  --model=MODEL_ID \
+  --display-name=judge \
+  --machine-type=n1-standard-4 \
+  --accelerator=count=1,type=nvidia-tesla-t4 \
+  --min-replica-count=1 --max-replica-count=1 \
+  --traffic-split=0=100 \
+  --service-account=judge-svc@printermonitor-488112.iam.gserviceaccount.com
+
+# Undeploy (stop T4 billing)
+gcloud ai endpoints undeploy-model 6900414029643120640 \
+  --region=europe-west1 --project=printermonitor-488112 \
+  --deployed-model-id=DEPLOYED_MODEL_ID
+
+# Get deployed model ID
+gcloud ai endpoints describe 6900414029643120640 \
+  --region=europe-west1 --project=printermonitor-488112 \
+  --format="json(deployedModels)"
+```
+
+### Pub/Sub backlog & Firestore flush
+
+If the pipeline falls behind, stale frames queue up and overwhelm the judge. Purge before/after testing:
+
+```bash
+# Purge frames-in backlog (Eventarc subscription — discard all queued frames)
+gcloud pubsub subscriptions seek eventarc-europe-west1-dispatcher-635712-sub-152 \
+  --time=$(date -u +%Y-%m-%dT%H:%M:%SZ) --project=printermonitor-488112
+
+# Flush Firestore (alerts, cooldowns, budget_alerts)
+python scripts/flush_firestore.py
+
+# Flush only cooldown locks (if emails are being suppressed)
+python scripts/flush_firestore.py --collections cooldowns
+```
 
 ## Architecture
 

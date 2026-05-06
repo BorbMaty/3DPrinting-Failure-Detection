@@ -10,7 +10,7 @@ from google.cloud import pubsub_v1
 
 PROJECT_ID   = os.environ.get("GCP_PROJECT", "printermonitor-488112")
 FRAMES_TOPIC = os.environ.get("PUBSUB_TOPIC", "frames-in")
-CAPTURE_FPS  = int(os.environ.get("CAPTURE_FPS", "1"))
+CAPTURE_FPS  = float(os.environ.get("CAPTURE_FPS", "0.1"))
 JPEG_QUALITY = int(os.environ.get("JPEG_QUALITY", "70"))
 FRAME_WIDTH  = int(os.environ.get("FRAME_WIDTH", "1280"))
 FRAME_HEIGHT = int(os.environ.get("FRAME_HEIGHT", "720"))
@@ -54,7 +54,10 @@ def capture_loop(camera_id: str, rtsp_url: str):
                 break
 
             ts = now_iso()
-            frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+            h0, w0 = frame.shape[:2]
+            if w0 > FRAME_WIDTH or h0 > FRAME_HEIGHT:
+                scale = min(FRAME_WIDTH / w0, FRAME_HEIGHT / h0)
+                frame = cv2.resize(frame, (int(w0 * scale), int(h0 * scale)))
             _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
             img_b64 = base64.b64encode(buf.tobytes()).decode("utf-8")
 

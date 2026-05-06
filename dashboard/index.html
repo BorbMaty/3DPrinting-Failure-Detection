@@ -263,11 +263,13 @@
 
   <script>
     // ── WebRTC config ───────────────────────────────────────────────────────
-    const HOST = window.MEDIAMTX_HOST || "fountain-using-social-alex.trycloudflare.com";
+    const HOST = window.MEDIAMTX_HOST || "hire-measures-ink-buf.trycloudflare.com";
     document.getElementById("hostPill").textContent = `host: ${HOST}`;
     const cams = ["cam1","cam2","cam3"];
     const pcs  = new Map();
-    const latestBoxes = { cam1: [], cam2: [], cam3: [] };
+    const latestBoxes      = { cam1: [], cam2: [], cam3: [] };
+    const lastDetectionTs  = { cam1: 0,  cam2: 0,  cam3: 0  };
+    const DETECTION_TTL_MS = 10_000; // clear boxes 10 s after last detection
     const pageLoadTime = new Date();
 
     // ── Toast ─────────────────────────────────────────────────────────────────
@@ -372,7 +374,14 @@
     }
 
     function redrawLoop() {
-      for (const cam of cams) drawBoxes(cam, latestBoxes[cam]);
+      const now = Date.now();
+      for (const cam of cams) {
+        if (latestBoxes[cam].length && now - lastDetectionTs[cam] > DETECTION_TTL_MS) {
+          latestBoxes[cam] = [];
+          setStatus(cam, true, "online");
+        }
+        drawBoxes(cam, latestBoxes[cam]);
+      }
       requestAnimationFrame(redrawLoop);
     }
     requestAnimationFrame(redrawLoop);
@@ -457,10 +466,11 @@
           const detections = d.detections ?? [];
           const ts         = d.timestamp  ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
           const isHighSev  = detections.some(det =>
-            ["spagetti","not_sticking","layer_shift"].includes(det.label)
+            ["spagetti","not_sticking","layer_shift","warping"].includes(det.label)
           );
 
           if (cams.includes(cam)) {
+            lastDetectionTs[cam] = Date.now();
             latestBoxes[cam] = detections.map(det => ({
               label:      det.label,
               confidence: det.confidence,
