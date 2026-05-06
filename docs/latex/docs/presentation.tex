@@ -8,6 +8,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{url}
+\usepackage{multimedia}
 
 % ── Color palette ─────────────────────────────────────────────────────────────
 \definecolor{primary}{RGB}{0,70,127}
@@ -356,7 +357,23 @@
   \end{columns}
 \end{frame}
 
-% ── Slide 14: Köszönet ────────────────────────────────────────────────────────
+% ── Slide 14: Demó ────────────────────────────────────────────────────────────
+\begin{frame}{Élő rendszer – videó és e-mail riasztás}
+  \begin{columns}[c]
+    \column{0.58\textwidth}
+      \centering
+      \movie[loop,autostart,width=8.4cm,height=4.7cm]{}{figures/images/demo/video.mp4}
+      \\[0.3em]
+      {\small Valós idejű detekció – teljes pipeline}
+    \column{0.40\textwidth}
+      \centering
+      \includegraphics[width=\textwidth,keepaspectratio]{demo/emailkep.png}
+      \\[0.3em]
+      {\small\textcolor{alertred}{\textbf{E-mail riasztás}} – magas súlyosságú hiba észlelve}
+  \end{columns}
+\end{frame}
+
+% ── Slide 15: Köszönet ────────────────────────────────────────────────────────
 \begin{frame}[plain]
   \begin{beamercolorbox}[wd=\paperwidth,ht=2.2cm,dp=0pt,center]{frametitle}
     \vspace{0.6cm}
