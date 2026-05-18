@@ -17,4 +17,4 @@ List deployed models on the endpoint:
   # Step 2: undeploy (replace DEPLOYED_MODEL_ID with the id field from above)                      
   gcloud ai endpoints undeploy-model 6900414029643120640 \       
     --region=europe-west1 --project=printermonitor-488112 \                                        
-    --deployed-model-id=DEPLOYED_MODEL_ID  
+    --deployed-model-id=2842873075521814528  

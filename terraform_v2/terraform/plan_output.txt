@@ -1,0 +1,24 @@
+var.gmail_address
+  Gmail address for alert notifications
+
+  Enter a value: var.gmail_app_password
+  Gmail app password for alert notifications
+
+  Enter a value: 
+Error: No value for required variable
+
+  on variables.tf line 38:
+  38: variable "gmail_address" {
+
+The root module input variable "gmail_address" is not set, and has no default
+value. Use a -var or -var-file command line argument to provide a value for
+this variable.
+
+Error: No value for required variable
+
+  on variables.tf line 44:
+  44: variable "gmail_app_password" {
+
+The root module input variable "gmail_app_password" is not set, and has no
+default value. Use a -var or -var-file command line argument to provide a
+value for this variable.

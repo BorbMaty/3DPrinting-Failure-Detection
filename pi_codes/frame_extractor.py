@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 
 import cv2
 from google.cloud import pubsub_v1
+from google.cloud import firestore as _firestore_lib
 
 PROJECT_ID   = os.environ.get("GCP_PROJECT", "printermonitor-488112")
 FRAMES_TOPIC = os.environ.get("PUBSUB_TOPIC", "frames-in")
 CAPTURE_FPS  = float(os.environ.get("CAPTURE_FPS", "0.1"))
-JPEG_QUALITY = int(os.environ.get("JPEG_QUALITY", "70"))
+JPEG_QUALITY = int(os.environ.get("JPEG_QUALITY", "100"))
 FRAME_WIDTH  = int(os.environ.get("FRAME_WIDTH", "1280"))
 FRAME_HEIGHT = int(os.environ.get("FRAME_HEIGHT", "720"))
 
@@ -23,6 +24,32 @@ CAMERAS = [
 
 publisher  = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, FRAMES_TOPIC)
+
+_fs_client = None
+_extraction_enabled: bool = True
+_extraction_checked_at: float = 0.0
+
+
+def _firestore():
+    global _fs_client
+    if _fs_client is None:
+        _fs_client = _firestore_lib.Client(project=PROJECT_ID)
+    return _fs_client
+
+
+def _is_extraction_enabled() -> bool:
+    """Check Firestore system_state/extraction.enabled (cached 5 s)."""
+    global _extraction_enabled, _extraction_checked_at
+    now = time.time()
+    if now - _extraction_checked_at < 5.0:
+        return _extraction_enabled
+    try:
+        snap = _firestore().collection("system_state").document("extraction").get()
+        _extraction_enabled = snap.to_dict().get("enabled", True) if snap.exists else True
+    except Exception as e:
+        print(f"[system_state] Firestore check failed, keeping current state: {e}", flush=True)
+    _extraction_checked_at = now
+    return _extraction_enabled
 
 
 def now_iso():
@@ -46,6 +73,11 @@ def capture_loop(camera_id: str, rtsp_url: str):
 
         while True:
             loop_start = time.time()
+
+            if not _is_extraction_enabled():
+                time.sleep(5)
+                continue
+
             ret, frame = cap.read()
 
             if not ret:

@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 import sys
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -39,9 +40,15 @@ _mock_ff = sys.modules.get("functions_framework") or MagicMock()
 _mock_ff.cloud_event = lambda f: f
 sys.modules.setdefault("functions_framework", _mock_ff)
 
-# requests: mock with a real exception class so except clauses work
+# requests: mock with real exception classes so except clauses work
+class _HttpError(Exception):
+    def __init__(self, msg="", status_code=None):
+        super().__init__(msg)
+        self.response = MagicMock(status_code=status_code) if status_code else None
+
 _mock_requests = MagicMock()
 _mock_requests.exceptions.RequestException = Exception
+_mock_requests.exceptions.HTTPError = _HttpError
 sys.modules.setdefault("requests", _mock_requests)
 
 _spec = importlib.util.spec_from_file_location(
@@ -52,7 +59,15 @@ disp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(disp)
 
 
-# ── Shared helper ─────────────────────────────────────────────────────────────
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
+def _fresh_ts():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _stale_ts(seconds=60):
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat()
+
 
 def _make_cloud_event(payload: dict):
     data_b64 = base64.b64encode(json.dumps(payload).encode()).decode()
@@ -96,7 +111,7 @@ class TestDispatchFrame:
 
     def test_skips_when_payload_has_no_image_data(self):
         event = _make_cloud_event({
-            "camera_id": "cam1", "seq": 1, "ts": "2026-01-01T00:00:00+00:00",
+            "camera_id": "cam1", "seq": 1, "ts": _fresh_ts(),
             # no data_b64 or image_b64
         })
         disp.dispatch_frame(event)
@@ -104,7 +119,7 @@ class TestDispatchFrame:
 
     def test_posts_to_vertex_ai_with_instances_envelope(self):
         event = _make_cloud_event({
-            "camera_id": "cam2", "seq": 5, "ts": "2026-01-01T00:00:00+00:00",
+            "camera_id": "cam2", "seq": 5, "ts": _fresh_ts(),
             "data_b64": "AAAABBBB",
         })
         mock_resp = MagicMock()
@@ -122,15 +137,41 @@ class TestDispatchFrame:
         assert instance["camera_id"] == "cam2"
         assert instance["seq"] == 5
 
-    def test_reraises_http_error_so_pubsub_can_retry(self):
+    def test_reraises_network_error_so_pubsub_can_retry(self):
         event = _make_cloud_event({
-            "camera_id": "cam3", "seq": 2, "ts": "2026-01-01T00:00:00+00:00",
+            "camera_id": "cam3", "seq": 2, "ts": _fresh_ts(),
             "data_b64": "AAAABBBB",
         })
-        disp.requests.post.side_effect = Exception("503 Service Unavailable")
+        disp.requests.post.side_effect = Exception("connection refused")
 
-        with pytest.raises(Exception, match="503"):
+        with pytest.raises(Exception, match="connection refused"):
             disp.dispatch_frame(event)
+
+    def test_reraises_unexpected_http_error_so_pubsub_can_retry(self):
+        event = _make_cloud_event({
+            "camera_id": "cam3", "seq": 2, "ts": _fresh_ts(),
+            "data_b64": "AAAABBBB",
+        })
+        disp.requests.post.side_effect = _HttpError("500 Internal Server Error", status_code=500)
+
+        with pytest.raises(_HttpError):
+            disp.dispatch_frame(event)
+
+    def test_drops_404_without_retry(self):
+        event = _make_cloud_event({
+            "camera_id": "cam1", "seq": 3, "ts": _fresh_ts(),
+            "data_b64": "AAAABBBB",
+        })
+        disp.requests.post.side_effect = _HttpError("404 Not Found", status_code=404)
+        disp.dispatch_frame(event)  # must not raise
+
+    def test_drops_503_without_retry(self):
+        event = _make_cloud_event({
+            "camera_id": "cam2", "seq": 4, "ts": _fresh_ts(),
+            "data_b64": "AAAABBBB",
+        })
+        disp.requests.post.side_effect = _HttpError("503 Service Unavailable", status_code=503)
+        disp.dispatch_frame(event)  # must not raise
 
     def test_malformed_cloud_event_does_not_raise(self):
         bad_event = MagicMock()
@@ -139,7 +180,7 @@ class TestDispatchFrame:
 
     def test_accepts_image_b64_field_as_fallback(self):
         event = _make_cloud_event({
-            "camera_id": "cam1", "seq": 3, "ts": "2026-01-01T00:00:00+00:00",
+            "camera_id": "cam1", "seq": 3, "ts": _fresh_ts(),
             "image_b64": "CCCCDDDD",   # alternative field name
         })
         mock_resp = MagicMock()
@@ -150,3 +191,48 @@ class TestDispatchFrame:
 
         _, kwargs = disp.requests.post.call_args
         assert kwargs["json"]["instances"][0]["data_b64"] == "CCCCDDDD"
+
+    def test_drops_stale_frame_without_calling_vertex(self):
+        event = _make_cloud_event({
+            "camera_id": "cam1", "seq": 99, "ts": _stale_ts(seconds=60),
+            "data_b64": "AAAABBBB",
+        })
+        disp.dispatch_frame(event)
+        disp.requests.post.assert_not_called()
+
+    def test_forwards_fresh_frame_to_vertex(self):
+        event = _make_cloud_event({
+            "camera_id": "cam1", "seq": 100, "ts": _fresh_ts(),
+            "data_b64": "AAAABBBB",
+        })
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"predictions": [{"detections": []}]}
+        disp.requests.post.return_value = mock_resp
+
+        disp.dispatch_frame(event)
+        disp.requests.post.assert_called_once()
+
+    def test_proceeds_when_ts_is_missing(self):
+        event = _make_cloud_event({
+            "camera_id": "cam1", "seq": 101,
+            # no ts field — should still forward
+            "data_b64": "AAAABBBB",
+        })
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"predictions": [{"detections": []}]}
+        disp.requests.post.return_value = mock_resp
+
+        disp.dispatch_frame(event)
+        disp.requests.post.assert_called_once()
+
+    def test_proceeds_when_ts_is_malformed(self):
+        event = _make_cloud_event({
+            "camera_id": "cam1", "seq": 102, "ts": "not-a-date",
+            "data_b64": "AAAABBBB",
+        })
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"predictions": [{"detections": []}]}
+        disp.requests.post.return_value = mock_resp
+
+        disp.dispatch_frame(event)
+        disp.requests.post.assert_called_once()

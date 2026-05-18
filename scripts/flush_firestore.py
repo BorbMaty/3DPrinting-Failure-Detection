@@ -12,6 +12,7 @@ COLLECTIONS = {
     "alerts":         "alerts",
     "cooldowns":      "alert_cooldowns",
     "budget_alerts":  "budget_alerts",
+    "inferences":     "inferences",
 }
 
 

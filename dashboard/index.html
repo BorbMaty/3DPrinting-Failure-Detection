@@ -3,12 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>3-Cam WebRTC Dashboard</title>
+  <title>PrinterMonitor — 3D Failure Detection</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, query, orderBy, limit }
+    import { getFirestore, collection, onSnapshot, query, orderBy, limit, doc, setDoc }
       from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -23,383 +27,507 @@
 
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
-
-    window._firestoreReady = { db, collection, onSnapshot, query, orderBy, limit };
+    window._firestoreReady = { db, collection, onSnapshot, query, orderBy, limit, doc, setDoc };
     window.dispatchEvent(new Event("firestoreReady"));
   </script>
 
   <style>
-    :root{
-      --bg:#0b0d10;
-      --card:#12161c;
-      --text:#e8eef6;
-      --muted:#97a3b6;
-      --gap:12px;
-      --r:14px;
+    /* ── Design tokens ─────────────────────────────────────────────────── */
+    :root {
+      --bg:         #07090e;
+      --surface:    #0d1117;
+      --surface-2:  #161b22;
+      --surface-3:  #1c2330;
+      --border:     rgba(255,255,255,0.08);
+      --border-2:   rgba(255,255,255,0.04);
+      --text:       #e6edf3;
+      --text-2:     #8b949e;
+      --text-3:     #6e7681;
+      --accent:     #388bfd;
+      --green:      #3fb950;
+      --red:        #f85149;
+      --amber:      #e3b341;
+      --purple:     #bc8cff;
+      --green-dim:  rgba(63,185,80,0.12);
+      --red-dim:    rgba(248,81,73,0.12);
+      --amber-dim:  rgba(227,179,65,0.12);
+      --blue-dim:   rgba(56,139,253,0.12);
+      --gap:        12px;
+      --r:          12px;
+      --r-sm:       8px;
+      --shadow:     0 4px 24px rgba(0,0,0,0.5);
     }
-    html, body { height: 100%; }
+
+    /* ── Reset ─────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
     body {
-      margin: 0;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Alert states ───────────────────────────────────────────────────────── */
-    body.alerting header{ border-bottom-color: rgba(231,76,60,.55); }
-    body.alerting #page-live main.grid{
-      outline: 4px solid rgba(231,76,60,.55);
-      outline-offset: -6px;
-      border-radius: 18px;
+    /* ── Animations ────────────────────────────────────────────────────── */
+    @keyframes pulse-green {
+      0%,100% { box-shadow: 0 0 0 0 rgba(63,185,80,0.5); }
+      60%     { box-shadow: 0 0 0 5px rgba(63,185,80,0); }
     }
-    body.alerting .tile{ border-color: rgba(231,76,60,.30); }
-    body.budget-alert header{ border-bottom-color: rgba(241,196,15,.55); }
+    @keyframes pulse-red {
+      0%,100% { box-shadow: 0 0 0 0 rgba(248,81,73,0.6); }
+      60%     { box-shadow: 0 0 0 6px rgba(248,81,73,0); }
+    }
+    @keyframes slideIn {
+      from { opacity:0; transform:translateY(6px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
 
-    /* ── Header ─────────────────────────────────────────────────────────────── */
-    header{
+    /* ── Alert states ──────────────────────────────────────────────────── */
+    body.alerting header        { border-bottom-color: rgba(248,81,73,0.4); }
+    body.alerting #page-live main.grid {
+      outline: 2px solid rgba(248,81,73,0.35);
+      outline-offset: -2px;
+      border-radius: 16px;
+    }
+    body.alerting .tile         { border-color: rgba(248,81,73,0.18); }
+    body.budget-alert header    { border-bottom-color: rgba(227,179,65,0.4); }
+
+    /* ── Scrollbars ────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar              { width:5px; height:5px; }
+    ::-webkit-scrollbar-track        { background:transparent; }
+    ::-webkit-scrollbar-thumb        { background:rgba(255,255,255,0.1); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover  { background:rgba(255,255,255,0.18); }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    header {
       flex: 0 0 auto;
-      height: 56px;
-      box-sizing: border-box;
-      background: rgba(11,13,16,.85);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid rgba(255,255,255,.06);
-      padding: 0 16px;
+      height: 58px;
+      background: rgba(7,9,14,0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 18px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
+      z-index: 100;
+      transition: border-bottom-color 0.3s;
     }
-    header h1{ font-size:16px; margin:0; font-weight:650; letter-spacing:.2px; white-space:nowrap; }
-    header .pill{
-      font-size:12px; padding:6px 10px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:999px; color:var(--muted); white-space:nowrap;
-    }
-    header .action-btn{
-      margin-left:auto; padding:8px 12px; border-radius:10px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.06); color:var(--text); cursor:pointer; white-space:nowrap;
-    }
-    header .action-btn:hover { background:rgba(255,255,255,.09); }
 
-    /* ── Tab nav ────────────────────────────────────────────────────────────── */
-    .tab-nav{
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .header-icon {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg, #1f6feb, #388bfd);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 12px rgba(56,139,253,0.3);
+    }
+    .header-icon svg { width:17px; height:17px; }
+    header h1 {
+      font-size: 14px; font-weight: 600; margin: 0;
+      letter-spacing: -0.01em; white-space: nowrap;
+    }
+    header h1 em { color:var(--text-3); font-style:normal; font-weight:400; }
+
+    .h-sep { width:1px; height:24px; background:var(--border); flex-shrink:0; }
+    .h-spacer { flex:1; }
+
+    .status-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px; color: var(--text-2);
+      white-space: nowrap;
+    }
+    .sc-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-3); flex-shrink: 0;
+    }
+    .sc-dot.live   { background: var(--green); animation: pulse-green 2.2s infinite; }
+    .sc-dot.err    { background: var(--red);   animation: pulse-red   1.5s infinite; }
+    .sc-dot.warn   { background: var(--amber); }
+
+    #fsStatus {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px; color: var(--text-2);
+    }
+    #fsStatus .sc-dot { transition: background 0.4s; }
+
+    .icon-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 13px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .icon-btn:hover {
+      background: var(--surface-3);
+      color: var(--text);
+      border-color: rgba(255,255,255,0.12);
+    }
+    #captureToggleBtn.capture-on {
+      border-color: rgba(63,185,80,0.35);
+      color: var(--green);
+    }
+    #captureToggleBtn.capture-on:hover {
+      background: rgba(63,185,80,0.08);
+      border-color: rgba(63,185,80,0.5);
+    }
+    #captureToggleBtn.capture-off {
+      border-color: rgba(227,179,65,0.35);
+      color: var(--amber);
+    }
+    #captureToggleBtn.capture-off:hover {
+      background: rgba(227,179,65,0.08);
+      border-color: rgba(227,179,65,0.5);
+    }
+
+    /* ── Tab nav ───────────────────────────────────────────────────────── */
+    .tab-nav {
       flex: 0 0 auto;
       display: flex;
-      gap: 4px;
-      padding: 8px 16px 0;
+      padding: 0 18px;
       background: var(--bg);
-      border-bottom: 1px solid rgba(255,255,255,.06);
+      border-bottom: 1px solid var(--border);
+      gap: 2px;
     }
-    .tab-btn{
-      padding: 8px 18px;
-      border-radius: 10px 10px 0 0;
-      border: 1px solid transparent;
+    .tab-btn {
+      padding: 11px 16px;
+      border: none;
+      border-bottom: 2px solid transparent;
       background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
+      color: var(--text-3);
+      font-size: 13px; font-weight: 500;
       cursor: pointer;
-      transition: color .15s, background .15s;
+      font-family: inherit;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
     }
-    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,.04); }
-    .tab-btn.active{
-      color: var(--text);
-      background: var(--card);
-      border-color: rgba(255,255,255,.08);
-      border-bottom-color: var(--card);
-      position: relative;
-      bottom: -1px;
-    }
+    .tab-btn:hover  { color: var(--text-2); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 
-    /* ── Page containers ────────────────────────────────────────────────────── */
-    .page{ display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }
-    .page.active{ display: flex; }
+    /* ── Pages ─────────────────────────────────────────────────────────── */
+    .page { display:none; flex:1 1 auto; min-height:0; flex-direction:column; overflow:hidden; }
+    .page.active { display:flex; }
 
-    /* ── Page 1: Live grid ──────────────────────────────────────────────────── */
-    main.grid{
-      flex: 1 1 auto;
-      min-height: 0;
-      padding: 16px;
-      box-sizing: border-box;
+    /* ── Page 1 live grid ──────────────────────────────────────────────── */
+    main.grid {
+      flex: 1 1 auto; min-height: 0;
+      padding: 14px;
       display: grid;
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr;
       gap: var(--gap);
       overflow: hidden;
+      transition: outline 0.25s;
     }
 
-    @media (max-width:1100px){
+    @media (max-width:1100px) {
       body { overflow:auto; }
-      main.grid{ overflow:visible; grid-template-columns:1fr; grid-template-rows:auto; }
-      .frames-row{ flex-direction: column !important; }
+      main.grid { overflow:visible; grid-template-columns:1fr; grid-template-rows:auto; }
+      .frames-row { flex-direction:column !important; }
     }
 
-    .tile{
-      background:var(--card);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:var(--r);
-      overflow:hidden;
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
-      display:flex; flex-direction:column;
-      height:100%; min-height:0;
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column;
+      height: 100%; min-height: 0;
+      transition: border-color 0.25s;
     }
-    .tile .top{
-      flex:0 0 auto; padding:10px 12px;
-      display:flex; align-items:center; gap:10px;
-      border-bottom:1px solid rgba(255,255,255,.06);
+    .tile .top {
+      flex: 0 0 auto;
+      padding: 9px 14px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.015);
     }
-    .dot{ width:10px; height:10px; border-radius:99px; background:#555; }
-    .dot.ok  { background:#2ecc71; }
-    .dot.bad { background:#e74c3c; }
-    .name   { font-size:13px; font-weight:650; }
-    .status { font-size:12px; color:var(--muted); margin-left:auto; }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-3); flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .dot.ok  { background: var(--green); animation: pulse-green 2.5s infinite; }
+    .dot.bad { background: var(--red);   animation: pulse-red   1.5s infinite; }
 
-    .stage{ position:relative; flex:1 1 auto; min-height:0; width:100%; background:#000; }
-    video, canvas{ position:absolute; inset:0; width:100%; height:100%; }
-    canvas{ pointer-events:none; }
+    .name   { font-size:13px; font-weight:600; letter-spacing:0.01em; }
+    .status { font-size:11px; color:var(--text-3); margin-left:auto; font-variant-numeric:tabular-nums; }
 
-    .dashBody{
-      flex:1 1 auto; min-height:0; padding:12px;
-      display:flex; flex-direction:column; gap:10px;
-    }
-    .dashRow{ flex:0 0 auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .btn{
-      padding:8px 12px; border-radius:10px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.06); color:var(--text); cursor:pointer;
-    }
-    .btn:hover { background:rgba(255,255,255,.09); }
-    .hint{ color:var(--muted); font-size:12px; }
+    .stage { position:relative; flex:1 1 auto; min-height:0; width:100%; background:#000; }
+    video, canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+    canvas { pointer-events:none; }
 
-    #eventLog{
+    /* ── Dashboard (event log) tile ────────────────────────────────────── */
+    .dashBody {
+      flex:1 1 auto; min-height:0; padding:10px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .dashRow {
+      flex:0 0 auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    }
+    .btn {
+      display:flex; align-items:center; gap:6px;
+      padding:5px 11px;
+      background:var(--surface-2); border:1px solid var(--border);
+      border-radius:var(--r-sm); color:var(--text-2);
+      font-size:12px; font-weight:500; cursor:pointer; font-family:inherit;
+      transition:background 0.15s, color 0.15s;
+    }
+    .btn:hover { background:var(--surface-3); color:var(--text); }
+    .hint { font-size:11px; color:var(--text-3); }
+
+    #eventLog {
       flex:1 1 auto; min-height:0; overflow:auto;
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:12px; padding:10px;
-      background:rgba(0,0,0,.25);
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
-      font-size:12px; line-height:1.4;
+      border:1px solid var(--border); border-radius:var(--r-sm);
+      padding:8px; background:rgba(0,0,0,0.18);
+      font-family:'JetBrains Mono', ui-monospace, monospace;
+      font-size:11.5px; line-height:1.5;
+      scrollbar-width:thin; scrollbar-color:var(--border) transparent;
     }
-    .eventLine{
-      padding:6px 8px; border-radius:10px;
-      border:1px solid rgba(255,255,255,.06);
-      background:rgba(255,255,255,.03); margin-bottom:8px;
+    .eventLine {
+      padding:7px 10px; border-radius:6px;
+      border:1px solid var(--border-2);
+      background:rgba(255,255,255,0.02);
+      margin-bottom:5px;
+      animation:slideIn 0.2s ease;
     }
-    .eventLine .meta{ color:var(--muted); margin-bottom:2px; }
-    .eventLine .msg { color:var(--text); font-weight:650; }
-    .eventLine.alert{
-      border-color:rgba(231,76,60,.45);
-      background:rgba(231,76,60,.10);
+    .eventLine .meta { color:var(--text-3); font-size:10.5px; margin-bottom:2px; }
+    .eventLine .msg  { color:var(--text); font-weight:500; }
+    .eventLine.alert {
+      border-color:rgba(248,81,73,0.28);
+      background:rgba(248,81,73,0.07);
     }
-    .eventLine.alert .msg{ color:#ffb4b0; }
-    .eventLine.budget{
-      border-color:rgba(241,196,15,.45);
-      background:rgba(241,196,15,.10);
+    .eventLine.alert .msg { color:#ff9492; }
+    .eventLine.budget {
+      border-color:rgba(227,179,65,0.28);
+      background:rgba(227,179,65,0.07);
     }
-    .eventLine.budget .msg{ color:#ffe08a; }
+    .eventLine.budget .msg { color:#f0c060; }
 
-    #fsStatus{
-      font-size:11px; padding:4px 8px;
-      border-radius:999px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);
-      color:var(--muted);
+    /* ── Page 2: Inference log ─────────────────────────────────────────── */
+    .page-inference {
+      overflow:auto; padding:14px; gap:12px;
+      scrollbar-width:thin; scrollbar-color:var(--border) transparent;
     }
+    .section-label {
+      flex:0 0 auto;
+      font-size:10.5px; font-weight:600; letter-spacing:0.07em;
+      text-transform:uppercase; color:var(--text-3); margin-bottom:6px;
+    }
+    .frames-row { flex:0 0 auto; display:flex; gap:var(--gap); }
 
-    /* ── Page 2: Inference Log ──────────────────────────────────────────────── */
-    .page-inference{
-      overflow: auto;
-      padding: 16px;
-      box-sizing: border-box;
-      gap: 16px;
+    .frame-tile {
+      flex:1 1 0; min-width:0;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow);
+      display:flex; flex-direction:column;
     }
+    .frame-tile .ftop {
+      flex:0 0 auto; padding:8px 12px;
+      display:flex; align-items:center; gap:8px;
+      border-bottom:1px solid var(--border);
+    }
+    .ftop .fname { font-size:13px; font-weight:600; }
+    .ftop .fts   { font-size:10.5px; color:var(--text-3); margin-left:auto; white-space:nowrap;
+                   font-family:'JetBrains Mono', monospace; }
 
-    .section-label{
-      flex: 0 0 auto;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .frames-row{
-      flex: 0 0 auto;
-      display: flex;
-      gap: var(--gap);
-    }
-    .frame-tile{
-      flex: 1 1 0;
-      min-width: 0;
-      background: var(--card);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: var(--r);
-      overflow: hidden;
-      box-shadow: 0 6px 20px rgba(0,0,0,.3);
-      display: flex;
-      flex-direction: column;
-    }
-    .frame-tile .ftop{
-      flex: 0 0 auto;
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-    }
-    .frame-tile .ftop .fname{ font-size:13px; font-weight:650; }
-    .frame-tile .ftop .fts  { font-size:11px; color:var(--muted); margin-left:auto; white-space:nowrap; }
-    .badge{
-      font-size:11px; padding:2px 8px;
-      border-radius:999px;
-      background:rgba(231,76,60,.18);
-      border:1px solid rgba(231,76,60,.35);
-      color:#ffb4b0;
+    .badge {
+      font-size:10.5px; padding:2px 8px; border-radius:4px; font-weight:500;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;
+      background:var(--red-dim); border:1px solid rgba(248,81,73,0.3); color:#ff9492;
     }
-    .badge.clean{
-      background:rgba(46,204,113,.10);
-      border-color:rgba(46,204,113,.25);
-      color:#6ee7a0;
+    .badge.clean {
+      background:var(--green-dim); border-color:rgba(63,185,80,0.25); color:var(--green);
     }
-    .frame-img-wrap{
-      flex: 0 0 auto;
-      background: #000;
-      aspect-ratio: 4/3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .frame-img-wrap img{
-      width:100%; height:100%; object-fit:contain; display:block; cursor:zoom-in;
-    }
-    .frame-placeholder{ color:var(--muted); font-size:12px; text-align:center; }
 
-    .log-tile{
-      flex: 1 1 200px;
-      background: var(--card);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: var(--r);
-      overflow: hidden;
-      box-shadow: 0 6px 20px rgba(0,0,0,.3);
-      display: flex;
-      flex-direction: column;
-      min-height: 240px;
+    .frame-img-wrap {
+      flex:0 0 auto; background:#000; aspect-ratio:4/3;
+      display:flex; align-items:center; justify-content:center; position:relative;
     }
-    .log-tile .ltop{
-      flex: 0 0 auto;
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
+    .frame-img-wrap img { width:100%; height:100%; object-fit:contain; display:block; cursor:zoom-in; }
+    .frame-placeholder  { color:var(--text-3); font-size:12px; text-align:center; }
+
+    .bbox-svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+    .img-thumb-wrap     { position:relative; display:inline-block; line-height:0; }
+    #lightboxWrap       { position:relative; display:inline-block; line-height:0; }
+
+    /* ── Log tile ──────────────────────────────────────────────────────── */
+    .log-tile {
+      flex:1 1 200px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow);
+      display:flex; flex-direction:column; min-height:240px;
     }
-    .log-tile .ltop .lname{ font-size:13px; font-weight:650; }
-    .log-tile .ltop .lhint{ font-size:11px; color:var(--muted); }
-    .log-tile .ltop .lcount{ font-size:12px; color:var(--muted); margin-left:auto; }
+    .log-tile .ltop {
+      flex:0 0 auto; padding:10px 16px;
+      display:flex; align-items:center; gap:10px;
+      border-bottom:1px solid var(--border);
+      background:rgba(255,255,255,0.015);
+    }
+    .ltop .lname  { font-size:13px; font-weight:600; }
+    .ltop .lhint  { font-size:11px; color:var(--text-3); }
+    .ltop .lcount {
+      font-size:11px; color:var(--text-3); margin-left:auto;
+      background:var(--surface-2); border:1px solid var(--border);
+      padding:2px 9px; border-radius:4px; font-variant-numeric:tabular-nums;
+    }
 
-    .log-scroll{ flex:1 1 auto; overflow:auto; }
+    .log-scroll { flex:1 1 auto; overflow:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 
-    table.inf-table{ width:100%; border-collapse:collapse; font-size:12px; }
-    table.inf-table thead th{
+    table.inf-table { width:100%; border-collapse:collapse; font-size:12px; }
+    table.inf-table thead th {
       position:sticky; top:0; z-index:1;
-      background:var(--card);
-      padding:8px 14px;
-      text-align:left;
-      font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
-      color:var(--muted);
-      border-bottom:1px solid rgba(255,255,255,.06);
+      background:var(--surface);
+      padding:8px 16px; text-align:left;
+      font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+      color:var(--text-3); border-bottom:1px solid var(--border);
     }
-    table.inf-table tbody tr{
-      border-bottom:1px solid rgba(255,255,255,.04);
-      transition:background .1s;
-    }
-    table.inf-table tbody tr:hover{ background:rgba(255,255,255,.03); }
-    table.inf-table tbody tr.has-det{ background:rgba(231,76,60,.05); }
-    table.inf-table tbody tr.has-det:hover{ background:rgba(231,76,60,.09); }
-    table.inf-table td{ padding:8px 14px; vertical-align:middle; }
-    td.cell-ts { white-space:nowrap; color:var(--muted); font-family:ui-monospace,monospace; }
-    td.cell-cam{ white-space:nowrap; font-weight:650; }
-    td.cell-seq{ white-space:nowrap; color:var(--muted); font-family:ui-monospace,monospace; }
+    table.inf-table tbody tr  { border-bottom:1px solid var(--border-2); transition:background 0.1s; }
+    table.inf-table tbody tr:hover { background:rgba(255,255,255,0.02); }
+    table.inf-table tbody tr.has-det { background:rgba(248,81,73,0.04); }
+    table.inf-table tbody tr.has-det:hover { background:rgba(248,81,73,0.08); }
+    table.inf-table td { padding:8px 16px; vertical-align:middle; }
 
-    .det-pill{
-      display:inline-block; margin:1px 2px;
-      padding:2px 7px; border-radius:999px;
-      font-size:11px; font-weight:600;
-      background:rgba(231,76,60,.15);
-      border:1px solid rgba(231,76,60,.30);
-      color:#ffb4b0;
-    }
-    .det-pill.low{
-      background:rgba(52,152,219,.12);
-      border-color:rgba(52,152,219,.25);
-      color:#93c5fd;
-    }
-    .clean-dash{ color:var(--muted); }
+    td.cell-ts  { white-space:nowrap; color:var(--text-3); font-family:'JetBrains Mono',monospace; font-size:11px; }
+    td.cell-cam { white-space:nowrap; font-weight:600; font-size:12px; }
+    td.cell-seq { white-space:nowrap; color:var(--text-3); font-family:'JetBrains Mono',monospace; font-size:11px; }
 
-    .img-thumb{
-      width:64px; height:48px; object-fit:cover;
-      border-radius:6px; display:block;
-      border:1px solid rgba(255,255,255,.08);
-      cursor:zoom-in; transition:opacity .15s;
+    .det-pill {
+      display:inline-block; margin:1px 2px; padding:2px 8px; border-radius:4px;
+      font-size:10.5px; font-weight:500;
+      background:var(--red-dim); border:1px solid rgba(248,81,73,0.28); color:#ff9492;
     }
-    .img-thumb:hover{ opacity:.75; }
-    .no-img{ color:var(--muted); }
+    .det-pill.low {
+      background:var(--blue-dim); border-color:rgba(56,139,253,0.25); color:#79c0ff;
+    }
+    .clean-dash { color:var(--text-3); }
 
-    /* ── Toast ──────────────────────────────────────────────────────────────── */
-    #toast{
-      position:fixed; bottom:24px; right:24px;
-      background:#1e2430; border:1px solid rgba(255,255,255,.12);
-      border-radius:14px; padding:14px 18px;
-      box-shadow:0 8px 32px rgba(0,0,0,.5);
-      max-width:320px; z-index:9999;
-      transform:translateY(120px); opacity:0;
-      transition:transform .3s ease, opacity .3s ease;
+    .img-thumb {
+      width:64px; height:48px; object-fit:cover; border-radius:6px; display:block;
+      border:1px solid var(--border); cursor:zoom-in; transition:opacity 0.15s;
+    }
+    .img-thumb:hover { opacity:0.72; }
+    .no-img { color:var(--text-3); }
+
+    /* ── Toast ─────────────────────────────────────────────────────────── */
+    #toast {
+      position:fixed; bottom:18px; right:18px;
+      background:var(--surface-2); border:1px solid var(--border);
+      border-radius:var(--r); padding:13px 16px;
+      box-shadow:0 16px 48px rgba(0,0,0,0.7);
+      max-width:290px; z-index:9999;
+      transform:translateY(130px); opacity:0;
+      transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease;
       pointer-events:none;
     }
-    #toast.show{ transform:translateY(0); opacity:1; }
-    #toast.defect{ border-color:rgba(231,76,60,.5); }
-    #toast.budget { border-color:rgba(241,196,15,.5); }
-    #toast .toast-title{ font-weight:700; font-size:13px; margin-bottom:4px; }
-    #toast .toast-body { font-size:12px; color:var(--muted); }
+    #toast.show    { transform:translateY(0); opacity:1; }
+    #toast.defect  { border-color:rgba(248,81,73,0.4); }
+    #toast.budget  { border-color:rgba(227,179,65,0.4); }
+    .toast-hdr     { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+    .toast-icon    { width:18px; height:18px; border-radius:4px; display:flex; align-items:center; justify-content:center; background:rgba(248,81,73,0.15); flex-shrink:0; }
+    #toast.budget .toast-icon { background:rgba(227,179,65,0.15); }
+    .toast-title   { font-weight:600; font-size:13px; }
+    .toast-body    { font-size:12px; color:var(--text-2); line-height:1.4; }
 
-    /* ── Lightbox ───────────────────────────────────────────────────────────── */
-    #lightbox{
+    /* ── Lightbox ──────────────────────────────────────────────────────── */
+    #lightbox {
       display:none; position:fixed; inset:0; z-index:10000;
-      background:rgba(0,0,0,.88);
-      align-items:center; justify-content:center;
-      cursor:zoom-out;
+      background:rgba(0,0,0,0.88); backdrop-filter:blur(4px);
+      align-items:center; justify-content:center; cursor:zoom-out;
     }
-    #lightbox.open{ display:flex; }
-    #lightbox img{ max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 0 60px rgba(0,0,0,.8); }
+    #lightbox.open { display:flex; }
+    #lightbox img  { max-width:90vw; max-height:90vh; border-radius:var(--r);
+                     box-shadow:0 0 80px rgba(0,0,0,0.9); display:block; }
   </style>
 </head>
 
 <body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
   <header>
-    <h1>3-Camera WebRTC Dashboard</h1>
-    <span class="pill" id="hostPill">host: –</span>
-    <span class="pill" id="hintPill">WHEP → MediaMTX</span>
-    <span id="fsStatus">Firestore: connecting…</span>
-    <button class="action-btn" id="reconnectBtn">Reconnect all</button>
+    <div class="header-brand">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+          <rect x="9" y="11" width="14" height="10" rx="2"/>
+          <line x1="12" y1="11" x2="12" y2="21"/>
+          <line x1="9"  y1="16" x2="23" y2="16"/>
+        </svg>
+      </div>
+      <h1>PrinterMonitor <em>/ Live</em></h1>
+    </div>
+
+    <div class="h-sep"></div>
+
+    <div class="status-chip" id="hostPill">
+      <span class="sc-dot"></span>
+      host: —
+    </div>
+
+    <div class="status-chip">
+      <span class="sc-dot live"></span>
+      WHEP · MediaMTX
+    </div>
+
+    <div class="h-spacer"></div>
+
+    <div id="fsStatus">
+      <span class="sc-dot" id="fsDot"></span>
+      Firestore: connecting…
+    </div>
+
+    <button class="icon-btn" id="captureToggleBtn" disabled title="Enable / disable frame capture on the Pi">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+        <line x1="12" y1="2" x2="12" y2="12"/>
+      </svg>
+      <span id="captureLabel">Capture: —</span>
+    </button>
+
+    <button class="icon-btn" id="reconnectBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+      Reconnect
+    </button>
   </header>
 
+  <!-- ── Tabs ────────────────────────────────────────────────────────── -->
   <nav class="tab-nav">
     <button class="tab-btn active" data-page="live">Live streams</button>
     <button class="tab-btn"        data-page="inference">Inference log</button>
   </nav>
 
-  <!-- ── Page 1: Live streams ─────────────────────────────────────────────── -->
+  <!-- ── Page 1: Live streams ────────────────────────────────────────── -->
   <div class="page active" id="page-live">
     <main class="grid">
+
       <section class="tile" data-cam="cam1">
         <div class="top">
           <span class="dot" id="dot-cam1"></span>
-          <span class="name">cam1</span>
+          <span class="name">Camera 1</span>
           <span class="status" id="status-cam1">idle</span>
         </div>
         <div class="stage">
@@ -411,7 +539,7 @@
       <section class="tile" data-cam="cam2">
         <div class="top">
           <span class="dot" id="dot-cam2"></span>
-          <span class="name">cam2</span>
+          <span class="name">Camera 2</span>
           <span class="status" id="status-cam2">idle</span>
         </div>
         <div class="stage">
@@ -423,7 +551,7 @@
       <section class="tile" data-cam="cam3">
         <div class="top">
           <span class="dot" id="dot-cam3"></span>
-          <span class="name">cam3</span>
+          <span class="name">Camera 3</span>
           <span class="status" id="status-cam3">idle</span>
         </div>
         <div class="stage">
@@ -435,21 +563,28 @@
       <section class="tile" id="dashTile">
         <div class="top">
           <span class="dot ok"></span>
-          <span class="name">dashboard</span>
-          <span class="status" id="dashStatus">events: 0</span>
+          <span class="name">Event Log</span>
+          <span class="status" id="dashStatus">0 events</span>
         </div>
         <div class="dashBody">
           <div class="dashRow">
-            <button class="btn" id="clearEventsBtn">Clear</button>
-            <span class="hint">Live from Firestore · alerts collection</span>
+            <button class="btn" id="clearEventsBtn">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              </svg>
+              Clear
+            </button>
+            <span class="hint">Live · Firestore alerts</span>
           </div>
           <div id="eventLog"></div>
         </div>
       </section>
+
     </main>
   </div>
 
-  <!-- ── Page 2: Inference log ────────────────────────────────────────────── -->
+  <!-- ── Page 2: Inference log ───────────────────────────────────────── -->
   <div class="page page-inference" id="page-inference">
 
     <div class="section-label">Latest frame per camera</div>
@@ -457,36 +592,39 @@
     <div class="frames-row">
       <div class="frame-tile">
         <div class="ftop">
-          <span class="fname">cam1</span>
+          <span class="fname">Camera 1</span>
           <span class="badge clean" id="fbadge-cam1">waiting</span>
           <span class="fts" id="fts-cam1">—</span>
         </div>
         <div class="frame-img-wrap">
-          <img   id="fimg-cam1" src="" alt="" style="display:none" />
+          <img id="fimg-cam1" src="" alt="" style="display:none" />
+          <svg id="fsvg-cam1" class="bbox-svg"></svg>
           <div class="frame-placeholder" id="fph-cam1">No inference yet</div>
         </div>
       </div>
 
       <div class="frame-tile">
         <div class="ftop">
-          <span class="fname">cam2</span>
+          <span class="fname">Camera 2</span>
           <span class="badge clean" id="fbadge-cam2">waiting</span>
           <span class="fts" id="fts-cam2">—</span>
         </div>
         <div class="frame-img-wrap">
-          <img   id="fimg-cam2" src="" alt="" style="display:none" />
+          <img id="fimg-cam2" src="" alt="" style="display:none" />
+          <svg id="fsvg-cam2" class="bbox-svg"></svg>
           <div class="frame-placeholder" id="fph-cam2">No inference yet</div>
         </div>
       </div>
 
       <div class="frame-tile">
         <div class="ftop">
-          <span class="fname">cam3</span>
+          <span class="fname">Camera 3</span>
           <span class="badge clean" id="fbadge-cam3">waiting</span>
           <span class="fts" id="fts-cam3">—</span>
         </div>
         <div class="frame-img-wrap">
-          <img   id="fimg-cam3" src="" alt="" style="display:none" />
+          <img id="fimg-cam3" src="" alt="" style="display:none" />
+          <svg id="fsvg-cam3" class="bbox-svg"></svg>
           <div class="frame-placeholder" id="fph-cam3">No inference yet</div>
         </div>
       </div>
@@ -495,7 +633,7 @@
     <div class="log-tile">
       <div class="ltop">
         <span class="lname">Inference log</span>
-        <span class="lhint">Live · Firestore inferences collection · last 100</span>
+        <span class="lhint">Live · Firestore inferences · last 100</span>
         <span class="lcount" id="infCount">0 events</span>
       </div>
       <div class="log-scroll">
@@ -513,21 +651,34 @@
         </table>
       </div>
     </div>
+
   </div>
 
   <!-- Toast -->
   <div id="toast">
-    <div class="toast-title" id="toastTitle"></div>
-    <div class="toast-body"  id="toastBody"></div>
+    <div class="toast-hdr">
+      <div class="toast-icon">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9"  x2="12"    y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div class="toast-title" id="toastTitle"></div>
+    </div>
+    <div class="toast-body" id="toastBody"></div>
   </div>
 
   <!-- Lightbox -->
   <div id="lightbox">
-    <img id="lightboxImg" src="" alt="Inference frame" />
+    <div id="lightboxWrap">
+      <img id="lightboxImg" src="" alt="Inference frame" />
+      <svg id="lightboxSvg" class="bbox-svg"></svg>
+    </div>
   </div>
 
   <script>
-    // ── Tab switching ─────────────────────────────────────────────────────────
+    // ── Tab switching ──────────────────────────────────────────────────────
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -537,24 +688,67 @@
       });
     });
 
-    // ── Lightbox ──────────────────────────────────────────────────────────────
+    // ── Lightbox ───────────────────────────────────────────────────────────
     const lightbox    = document.getElementById("lightbox");
     const lightboxImg = document.getElementById("lightboxImg");
+    const lightboxSvg = document.getElementById("lightboxSvg");
     lightbox.addEventListener("click", () => lightbox.classList.remove("open"));
-    function openLightbox(src) { lightboxImg.src = src; lightbox.classList.add("open"); }
 
-    // ── WebRTC config ─────────────────────────────────────────────────────────
+    function openLightbox(src, detections) {
+      lightboxImg.onload = () => drawBoxesSvg(lightboxSvg, detections || [], lightboxImg.naturalWidth, lightboxImg.naturalHeight);
+      lightboxImg.src = src;
+      lightbox.classList.add("open");
+    }
+
+    // ── SVG bounding-box overlay ───────────────────────────────────────────
+    const NS = "http://www.w3.org/2000/svg";
+    function drawBoxesSvg(svg, detections, nw, nh) {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!detections || !detections.length || !nw) return;
+      svg.setAttribute("viewBox", `0 0 ${nw} ${nh}`);
+      const sw = Math.max(1.5, nw / 500);
+      const fs = Math.max(11, nw / 80);
+      for (const d of detections) {
+        if (!d.bbox) continue;
+        const [x1, y1, x2, y2] = d.bbox;
+        const color = HIGH_SEV.has(d.label) ? "#f85149" : "#e3b341";
+        const rect = document.createElementNS(NS, "rect");
+        rect.setAttribute("x", x1); rect.setAttribute("y", y1);
+        rect.setAttribute("width", x2 - x1); rect.setAttribute("height", y2 - y1);
+        rect.setAttribute("fill", "none");
+        rect.setAttribute("stroke", color);
+        rect.setAttribute("stroke-width", sw);
+        svg.appendChild(rect);
+        const conf = d.confidence != null ? ` ${(d.confidence * 100).toFixed(0)}%` : "";
+        const text = document.createElementNS(NS, "text");
+        text.setAttribute("x", x1 + 2);
+        text.setAttribute("y", y1 > fs + 4 ? y1 - 4 : y1 + fs + 2);
+        text.setAttribute("fill", color);
+        text.setAttribute("font-size", fs);
+        text.setAttribute("font-weight", "600");
+        text.setAttribute("font-family", "monospace, sans-serif");
+        text.setAttribute("paint-order", "stroke");
+        text.setAttribute("stroke", "rgba(0,0,0,0.75)");
+        text.setAttribute("stroke-width", sw * 2);
+        text.textContent = `${d.label}${conf}`;
+        svg.appendChild(text);
+      }
+    }
+
+    // ── Config ─────────────────────────────────────────────────────────────
     const HOST = window.MEDIAMTX_HOST || "degrees-front-earning-consult.trycloudflare.com";
-    document.getElementById("hostPill").textContent = `host: ${HOST}`;
-    const cams = ["cam1","cam2","cam3"];
-    const pcs  = new Map();
-    const latestBoxes      = { cam1: [], cam2: [], cam3: [] };
-    const lastDetectionTs  = { cam1: 0,  cam2: 0,  cam3: 0  };
+    document.getElementById("hostPill").innerHTML =
+      `<span class="sc-dot"></span>host: ${HOST}`;
+
+    const cams             = ["cam1","cam2","cam3"];
+    const pcs              = new Map();
+    const latestBoxes      = { cam1:[], cam2:[], cam3:[] };
+    const lastDetectionTs  = { cam1:0,  cam2:0,  cam3:0  };
     const DETECTION_TTL_MS = 10_000;
     const pageLoadTime     = new Date();
     const HIGH_SEV         = new Set(["spagetti","not_sticking","layer_shift","warping"]);
 
-    // ── Toast ─────────────────────────────────────────────────────────────────
+    // ── Toast ──────────────────────────────────────────────────────────────
     let toastTimer = null;
     function showToast(title, body, type="defect") {
       const t = document.getElementById("toast");
@@ -565,26 +759,24 @@
       toastTimer = setTimeout(() => { t.className = ""; }, 5000);
     }
 
-    // ── Status helpers ────────────────────────────────────────────────────────
+    // ── Camera status helpers ──────────────────────────────────────────────
     function setStatus(cam, ok, text) {
       document.getElementById(`dot-${cam}`).classList.toggle("ok",  !!ok);
       document.getElementById(`dot-${cam}`).classList.toggle("bad", ok === false);
       document.getElementById(`status-${cam}`).textContent = text;
     }
 
-    // ── WHEP ──────────────────────────────────────────────────────────────────
+    // ── WHEP ───────────────────────────────────────────────────────────────
     async function startWhep(cam) {
       const videoEl = document.getElementById(`v-${cam}`);
       const whepUrl = `https://${HOST}/${cam}/whep`;
-
       if (pcs.has(cam)) { try { pcs.get(cam).close(); } catch {} pcs.delete(cam); }
-      setStatus(cam, null, "connecting...");
+      setStatus(cam, null, "connecting…");
 
       const pc = new RTCPeerConnection();
       pcs.set(cam, pc);
       pc.addTransceiver("video", { direction:"recvonly" });
-
-      pc.ontrack = (ev) => { videoEl.srcObject = ev.streams[0]; setStatus(cam, true, "online"); };
+      pc.ontrack = ev => { videoEl.srcObject = ev.streams[0]; setStatus(cam, true, "online"); };
       pc.onconnectionstatechange = () => {
         const s = pc.connectionState;
         if (s === "failed" || s === "disconnected") setStatus(cam, false, s);
@@ -603,10 +795,9 @@
     async function startAll() {
       for (const cam of cams) { try { await startWhep(cam); } catch(e) { console.error(e); } }
     }
-
     document.getElementById("reconnectBtn").addEventListener("click", startAll);
 
-    // ── Canvas overlay ────────────────────────────────────────────────────────
+    // ── Canvas bbox overlay ────────────────────────────────────────────────
     function drawBoxes(cam, boxes) {
       const video  = document.getElementById(`v-${cam}`);
       const canvas = document.getElementById(`c-${cam}`);
@@ -618,26 +809,27 @@
       if (!boxes || !boxes.length) return;
 
       const palette = {
-        stringing:"#e74c3c", warping:"#e67e22", layer_shift:"#f1c40f",
-        under_extrusion:"#3498db", over_extrusion:"#9b59b6",
-        nozzle_clog:"#1abc9c", foreign_object_on_print_area:"#e91e63",
-        not_sticking:"#ff5722", spagetti:"#2ecc71",
+        stringing:"#f85149", warping:"#e3b341", layer_shift:"#388bfd",
+        under_extrusion:"#79c0ff", over_extrusion:"#bc8cff",
+        nozzle_clog:"#3fb950", foreign_object_on_print_area:"#ff79c6",
+        not_sticking:"#ff9d00", spagetti:"#3fb950",
       };
-      ctx.lineWidth = 3; ctx.font = "14px sans-serif";
 
       for (const b of boxes) {
         const x = b.x * canvas.width,  y = b.y * canvas.height;
         const w = b.w * canvas.width,  h = b.h * canvas.height;
-        const color = palette[b.label] ?? "#2ecc71";
+        const color = palette[b.label] ?? "#79c0ff";
         const conf  = b.confidence != null ? ` ${(b.confidence*100).toFixed(0)}%` : "";
         const label = `${b.label}${conf}`;
+        ctx.lineWidth   = 2;
         ctx.strokeStyle = color;
         ctx.strokeRect(x, y, w, h);
+        ctx.font = "bold 13px 'Inter', sans-serif";
         const tw = ctx.measureText(label).width;
-        ctx.fillStyle = "rgba(0,0,0,0.65)";
-        ctx.fillRect(x, Math.max(0,y-18), tw+8, 20);
+        ctx.fillStyle = "rgba(0,0,0,0.72)";
+        ctx.fillRect(x, Math.max(0, y - 20), tw + 10, 21);
         ctx.fillStyle = color;
-        ctx.fillText(label, x+4, Math.max(14,y-4));
+        ctx.fillText(label, x + 5, Math.max(14, y - 4));
       }
     }
 
@@ -653,7 +845,7 @@
     }
     requestAnimationFrame(redrawLoop);
 
-    // ── Timestamp formatting ──────────────────────────────────────────────────
+    // ── Timestamp helpers ──────────────────────────────────────────────────
     function fmtTs(isoStr) {
       try {
         return new Date(isoStr).toLocaleString("en-GB", {
@@ -671,7 +863,7 @@
       } catch { return isoStr; }
     }
 
-    // ── Page 1 event log ──────────────────────────────────────────────────────
+    // ── Event log (page 1) ─────────────────────────────────────────────────
     let eventCount = 0;
     function addEventLine(cam, text, ts, isAlert=false) {
       const log  = document.getElementById("eventLog");
@@ -685,28 +877,29 @@
       wrap.appendChild(meta); wrap.appendChild(msg);
       log.prepend(wrap);
       eventCount++;
-      document.getElementById("dashStatus").textContent = `events: ${eventCount}`;
+      document.getElementById("dashStatus").textContent = `${eventCount} events`;
     }
 
     let alertTimer = null;
     function flashGlobalAlert(ms=2500) {
       document.body.classList.add("alerting");
       if (alertTimer) clearTimeout(alertTimer);
-      alertTimer = setTimeout(() => { document.body.classList.remove("alerting"); alertTimer=null; }, ms);
+      alertTimer = setTimeout(() => { document.body.classList.remove("alerting"); alertTimer = null; }, ms);
     }
 
     document.getElementById("clearEventsBtn").addEventListener("click", () => {
       document.getElementById("eventLog").innerHTML = "";
       eventCount = 0;
-      document.getElementById("dashStatus").textContent = "events: 0";
-      document.body.classList.remove("alerting","budget-alert");
+      document.getElementById("dashStatus").textContent = "0 events";
+      document.body.classList.remove("alerting", "budget-alert");
     });
 
-    // ── Page 2: latest-frame tiles ────────────────────────────────────────────
-    const latestFrameTs = { cam1: "", cam2: "", cam3: "" };
+    // ── Frame tiles (page 2) ───────────────────────────────────────────────
+    const latestFrameTs = { cam1:"", cam2:"", cam3:"" };
 
     function updateFrameTile(cam, frameUrl, ts, detections) {
       const img   = document.getElementById(`fimg-${cam}`);
+      const svg   = document.getElementById(`fsvg-${cam}`);
       const ph    = document.getElementById(`fph-${cam}`);
       const tsEl  = document.getElementById(`fts-${cam}`);
       const badge = document.getElementById(`fbadge-${cam}`);
@@ -714,45 +907,35 @@
       tsEl.textContent = fmtTsShort(ts);
 
       if (frameUrl) {
+        img.onload = () => drawBoxesSvg(svg, detections, img.naturalWidth, img.naturalHeight);
         img.src = frameUrl;
         img.style.display = "block";
         ph.style.display  = "none";
-        img.onclick = () => openLightbox(frameUrl);
+        img.onclick = () => openLightbox(frameUrl, detections);
       }
 
       const hasD = detections && detections.length > 0;
-      if (hasD) {
-        badge.className   = "badge";
-        badge.textContent = detections.map(d => d.label).join(", ");
-      } else {
-        badge.className   = "badge clean";
-        badge.textContent = "clean";
-      }
+      badge.className   = hasD ? "badge" : "badge clean";
+      badge.textContent = hasD ? detections.map(d => d.label).join(", ") : "clean";
     }
 
-    // ── Page 2: inference log table ───────────────────────────────────────────
+    // ── Inference log table (page 2) ───────────────────────────────────────
     let infCount = 0;
-
     function addInferenceRow(cam, ts, seq, detections, frameUrl) {
       const body = document.getElementById("infBody");
       const hasD = detections && detections.length > 0;
-
-      const tr = document.createElement("tr");
+      const tr   = document.createElement("tr");
       if (hasD) tr.classList.add("has-det");
 
-      // Time
       const tdTs = document.createElement("td");
       tdTs.className = "cell-ts"; tdTs.textContent = fmtTsShort(ts);
 
-      // Camera
       const tdCam = document.createElement("td");
       tdCam.className = "cell-cam"; tdCam.textContent = cam;
 
-      // Seq
       const tdSeq = document.createElement("td");
       tdSeq.className = "cell-seq"; tdSeq.textContent = seq >= 0 ? `#${seq}` : "—";
 
-      // Detections
       const tdDets = document.createElement("td");
       if (hasD) {
         for (const d of detections) {
@@ -768,15 +951,20 @@
         tdDets.appendChild(span);
       }
 
-      // Frame thumbnail
       const tdImg = document.createElement("td");
       if (frameUrl) {
+        const wrap  = document.createElement("div");
+        wrap.className = "img-thumb-wrap";
         const thumb = document.createElement("img");
         thumb.className = "img-thumb";
         thumb.src = frameUrl; thumb.alt = `${cam} frame`;
         thumb.title = "Click to enlarge";
-        thumb.onclick = () => openLightbox(frameUrl);
-        tdImg.appendChild(thumb);
+        const tsvg = document.createElementNS(NS, "svg");
+        tsvg.classList.add("bbox-svg");
+        thumb.onload  = () => drawBoxesSvg(tsvg, detections, thumb.naturalWidth, thumb.naturalHeight);
+        thumb.onclick = () => openLightbox(frameUrl, detections);
+        wrap.append(thumb, tsvg);
+        tdImg.appendChild(wrap);
       } else {
         const span = document.createElement("span");
         span.className = "no-img"; span.textContent = "—";
@@ -785,32 +973,34 @@
 
       tr.append(tdTs, tdCam, tdSeq, tdDets, tdImg);
       body.prepend(tr);
-
       infCount++;
       document.getElementById("infCount").textContent = `${infCount} events`;
     }
 
-    // ── Firestore realtime listeners ──────────────────────────────────────────
+    // ── Firestore listeners ────────────────────────────────────────────────
     window.addEventListener("firestoreReady", () => {
       const { db, collection, onSnapshot, query, orderBy, limit } = window._firestoreReady;
 
-      document.getElementById("fsStatus").textContent = "Firestore: listening";
-      document.getElementById("fsStatus").style.color = "#2ecc71";
+      const fsDot = document.getElementById("fsDot");
+      const fsEl  = document.getElementById("fsStatus");
+      fsDot.classList.add("live");
+      fsEl.lastChild.textContent = "Firestore: live";
 
       const seenAlerts = new Set();
       const seenInf    = new Set();
+      let   infInitialized = false;
 
-      // ── alerts → page 1 event log ─────────────────────────────────────────
+      // alerts → page 1 event log
       onSnapshot(
         query(collection(db, "alerts"), orderBy("created_at","desc"), limit(50)),
-        (snapshot) => {
-          snapshot.docChanges().forEach((change) => {
+        snapshot => {
+          snapshot.docChanges().forEach(change => {
             if (change.type !== "added") return;
             const docId = change.doc.id;
             if (seenAlerts.has(docId)) return;
             seenAlerts.add(docId);
 
-            const d = change.doc.data();
+            const d          = change.doc.data();
             if ((d.created_at?.toDate?.() ?? new Date(0)) < pageLoadTime) return;
 
             const cam        = d.camera_id ?? "unknown";
@@ -821,7 +1011,7 @@
             if (cams.includes(cam)) {
               lastDetectionTs[cam] = Date.now();
               latestBoxes[cam] = detections.map(det => ({
-                label:det.label, confidence:det.confidence,
+                label: det.label, confidence: det.confidence,
                 x: det.x ?? (det.bbox?.[0] ?? 0) / 640,
                 y: det.y ?? (det.bbox?.[1] ?? 0) / 480,
                 w: det.w ?? ((det.bbox?.[2] ?? 0) - (det.bbox?.[0] ?? 0)) / 640,
@@ -836,48 +1026,93 @@
 
             if (isHighSev) {
               flashGlobalAlert(3000);
-              showToast("Defect Detected", `${cam}: ${detections.map(d=>d.label).join(", ")}`, "defect");
+              showToast("Defect Detected", `${cam}: ${detections.map(d => d.label).join(", ")}`, "defect");
             }
           });
         },
-        (err) => {
+        err => {
           console.error("Firestore alerts error:", err);
-          document.getElementById("fsStatus").textContent = "Firestore: error";
-          document.getElementById("fsStatus").style.color = "#e74c3c";
+          fsDot.classList.remove("live"); fsDot.classList.add("err");
+          fsEl.lastChild.textContent = "Firestore: error";
         }
       );
 
-      // ── inferences → page 2 ───────────────────────────────────────────────
+      // inferences → page 2
+      function extractInfData(doc) {
+        const d = doc.data();
+        return {
+          cam:        d.camera_id ?? "unknown",
+          detections: d.detections ?? [],
+          ts:         d.timestamp ?? d.created_at?.toDate?.()?.toISOString?.() ?? "",
+          seq:        d.seq ?? -1,
+          frameUrl:   d.frame_url ?? "",
+        };
+      }
+
+      function maybeUpdateTile({ cam, ts, frameUrl, detections }) {
+        if (cams.includes(cam) && ts > latestFrameTs[cam]) {
+          latestFrameTs[cam] = ts;
+          updateFrameTile(cam, frameUrl, ts, detections);
+        }
+      }
+
       onSnapshot(
         query(collection(db, "inferences"), orderBy("created_at","desc"), limit(100)),
-        (snapshot) => {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type !== "added") return;
-            const docId = change.doc.id;
-            if (seenInf.has(docId)) return;
-            seenInf.add(docId);
-
-            const d          = change.doc.data();
-            const cam        = d.camera_id ?? "unknown";
-            const detections = d.detections ?? [];
-            const ts         = d.timestamp ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
-            const seq        = d.seq ?? -1;
-            const frameUrl   = d.frame_url ?? "";
-
-            // Update the latest-frame tile only if this is newer
-            if (cams.includes(cam) && ts > latestFrameTs[cam]) {
-              latestFrameTs[cam] = ts;
-              updateFrameTile(cam, frameUrl, ts, detections);
-            }
-
-            addInferenceRow(cam, ts, seq, detections, frameUrl);
-          });
+        snapshot => {
+          if (!infInitialized) {
+            infInitialized = true;
+            const added = snapshot.docChanges().filter(c => c.type === "added");
+            added.forEach(c => { if (!seenInf.has(c.doc.id)) maybeUpdateTile(extractInfData(c.doc)); });
+            [...added].reverse().forEach(c => {
+              if (seenInf.has(c.doc.id)) return;
+              seenInf.add(c.doc.id);
+              const { cam, ts, seq, detections, frameUrl } = extractInfData(c.doc);
+              addInferenceRow(cam, ts, seq, detections, frameUrl);
+            });
+          } else {
+            snapshot.docChanges().forEach(change => {
+              if (change.type !== "added") return;
+              if (seenInf.has(change.doc.id)) return;
+              seenInf.add(change.doc.id);
+              const inf = extractInfData(change.doc);
+              maybeUpdateTile(inf);
+              addInferenceRow(inf.cam, inf.ts, inf.seq, inf.detections, inf.frameUrl);
+              document.querySelector(".log-scroll").scrollTop = 0;
+            });
+          }
         },
-        (err) => { console.error("Firestore inferences error:", err); }
+        err => { console.error("Firestore inferences error:", err); }
       );
+      // ── Capture toggle ────────────────────────────────────────────────────
+      const { doc: fsDoc, setDoc } = window._firestoreReady;
+      let extractionEnabled = null;
+
+      function updateCaptureBtn(enabled) {
+        const btn   = document.getElementById("captureToggleBtn");
+        const label = document.getElementById("captureLabel");
+        btn.disabled = false;
+        btn.classList.toggle("capture-on",  enabled === true);
+        btn.classList.toggle("capture-off", enabled === false);
+        label.textContent = enabled === true ? "Capture: ON" : enabled === false ? "Capture: OFF" : "Capture: —";
+      }
+
+      onSnapshot(fsDoc(db, "system_state", "extraction"), snap => {
+        extractionEnabled = snap.exists() ? (snap.data().enabled ?? true) : true;
+        updateCaptureBtn(extractionEnabled);
+      });
+
+      document.getElementById("captureToggleBtn").addEventListener("click", async () => {
+        const next = !extractionEnabled;
+        try {
+          await setDoc(fsDoc(db, "system_state", "extraction"), { enabled: next });
+        } catch (e) {
+          console.error("Failed to update capture state:", e);
+          showToast("Error", "Could not update capture state", "defect");
+        }
+      });
     });
 
-    // ── Boot ──────────────────────────────────────────────────────────────────
+    // ── Boot ───────────────────────────────────────────────────────────────
     startAll();
   </script>
 </body>
