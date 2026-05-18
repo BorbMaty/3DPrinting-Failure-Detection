@@ -22,8 +22,11 @@ os.environ.setdefault("GCP_PROJECT", "test-project")
 os.environ.setdefault("DETECTIONS_TOPIC", "test-detections")
 os.environ.setdefault("MODEL_PATH", "/tmp/fake_model.pt")
 
+os.environ.setdefault("FRAMES_BUCKET", "")  # disable GCS uploads in tests
+
 for _mod in ["cv2", "numpy", "ultralytics",
-             "google", "google.cloud", "google.cloud.pubsub_v1"]:
+             "google", "google.cloud", "google.cloud.pubsub_v1",
+             "google.cloud.storage"]:
     sys.modules.setdefault(_mod, MagicMock())
 
 _spec = importlib.util.spec_from_file_location(
@@ -179,6 +182,7 @@ class TestHandlerPost:
         }).encode()
         h = _make_post_handler(body)
         h.do_POST()
+        # Judge always publishes (even zero detections) for Firestore inference log
         judge.publisher.publish.assert_called_once()
 
     def test_pubsub_envelope_returns_200(self):

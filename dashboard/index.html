@@ -11,7 +11,6 @@
     import { getFirestore, collection, onSnapshot, query, orderBy, limit }
       from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-    // ── Firebase config ──────────────────────────────────────────────────────
     const firebaseConfig = {
       apiKey:            "AIzaSyCjp-IZzt2CfXEwBxnn2icv8LxvrsJmieQ",
       authDomain:        "printermonitor-488112.firebaseapp.com",
@@ -25,7 +24,6 @@
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // Expose to global scope
     window._firestoreReady = { db, collection, onSnapshot, query, orderBy, limit };
     window.dispatchEvent(new Event("firestoreReady"));
   </script>
@@ -50,16 +48,17 @@
       flex-direction: column;
     }
 
+    /* ── Alert states ───────────────────────────────────────────────────────── */
     body.alerting header{ border-bottom-color: rgba(231,76,60,.55); }
-    body.alerting main.grid{
+    body.alerting #page-live main.grid{
       outline: 4px solid rgba(231,76,60,.55);
       outline-offset: -6px;
       border-radius: 18px;
     }
     body.alerting .tile{ border-color: rgba(231,76,60,.30); }
-
     body.budget-alert header{ border-bottom-color: rgba(241,196,15,.55); }
 
+    /* ── Header ─────────────────────────────────────────────────────────────── */
     header{
       flex: 0 0 auto;
       height: 56px;
@@ -67,10 +66,10 @@
       background: rgba(11,13,16,.85);
       backdrop-filter: blur(8px);
       border-bottom: 1px solid rgba(255,255,255,.06);
-      padding: 10px 16px;
-      display:flex;
-      align-items:center;
-      gap:12px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     header h1{ font-size:16px; margin:0; font-weight:650; letter-spacing:.2px; white-space:nowrap; }
     header .pill{
@@ -79,13 +78,48 @@
       border:1px solid rgba(255,255,255,.08);
       border-radius:999px; color:var(--muted); white-space:nowrap;
     }
-    header button{
+    header .action-btn{
       margin-left:auto; padding:8px 12px; border-radius:10px;
       border:1px solid rgba(255,255,255,.10);
       background:rgba(255,255,255,.06); color:var(--text); cursor:pointer; white-space:nowrap;
     }
-    header button:hover { background:rgba(255,255,255,.09); }
+    header .action-btn:hover { background:rgba(255,255,255,.09); }
 
+    /* ── Tab nav ────────────────────────────────────────────────────────────── */
+    .tab-nav{
+      flex: 0 0 auto;
+      display: flex;
+      gap: 4px;
+      padding: 8px 16px 0;
+      background: var(--bg);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .tab-btn{
+      padding: 8px 18px;
+      border-radius: 10px 10px 0 0;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color .15s, background .15s;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,.04); }
+    .tab-btn.active{
+      color: var(--text);
+      background: var(--card);
+      border-color: rgba(255,255,255,.08);
+      border-bottom-color: var(--card);
+      position: relative;
+      bottom: -1px;
+    }
+
+    /* ── Page containers ────────────────────────────────────────────────────── */
+    .page{ display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }
+    .page.active{ display: flex; }
+
+    /* ── Page 1: Live grid ──────────────────────────────────────────────────── */
     main.grid{
       flex: 1 1 auto;
       min-height: 0;
@@ -101,6 +135,7 @@
     @media (max-width:1100px){
       body { overflow:auto; }
       main.grid{ overflow:visible; grid-template-columns:1fr; grid-template-rows:auto; }
+      .frames-row{ flex-direction: column !important; }
     }
 
     .tile{
@@ -174,7 +209,148 @@
       color:var(--muted);
     }
 
-    /* Toast notification */
+    /* ── Page 2: Inference Log ──────────────────────────────────────────────── */
+    .page-inference{
+      overflow: auto;
+      padding: 16px;
+      box-sizing: border-box;
+      gap: 16px;
+    }
+
+    .section-label{
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .frames-row{
+      flex: 0 0 auto;
+      display: flex;
+      gap: var(--gap);
+    }
+    .frame-tile{
+      flex: 1 1 0;
+      min-width: 0;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: var(--r);
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,.3);
+      display: flex;
+      flex-direction: column;
+    }
+    .frame-tile .ftop{
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .frame-tile .ftop .fname{ font-size:13px; font-weight:650; }
+    .frame-tile .ftop .fts  { font-size:11px; color:var(--muted); margin-left:auto; white-space:nowrap; }
+    .badge{
+      font-size:11px; padding:2px 8px;
+      border-radius:999px;
+      background:rgba(231,76,60,.18);
+      border:1px solid rgba(231,76,60,.35);
+      color:#ffb4b0;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;
+    }
+    .badge.clean{
+      background:rgba(46,204,113,.10);
+      border-color:rgba(46,204,113,.25);
+      color:#6ee7a0;
+    }
+    .frame-img-wrap{
+      flex: 0 0 auto;
+      background: #000;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .frame-img-wrap img{
+      width:100%; height:100%; object-fit:contain; display:block; cursor:zoom-in;
+    }
+    .frame-placeholder{ color:var(--muted); font-size:12px; text-align:center; }
+
+    .log-tile{
+      flex: 1 1 200px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: var(--r);
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,.3);
+      display: flex;
+      flex-direction: column;
+      min-height: 240px;
+    }
+    .log-tile .ltop{
+      flex: 0 0 auto;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .log-tile .ltop .lname{ font-size:13px; font-weight:650; }
+    .log-tile .ltop .lhint{ font-size:11px; color:var(--muted); }
+    .log-tile .ltop .lcount{ font-size:12px; color:var(--muted); margin-left:auto; }
+
+    .log-scroll{ flex:1 1 auto; overflow:auto; }
+
+    table.inf-table{ width:100%; border-collapse:collapse; font-size:12px; }
+    table.inf-table thead th{
+      position:sticky; top:0; z-index:1;
+      background:var(--card);
+      padding:8px 14px;
+      text-align:left;
+      font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+      color:var(--muted);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    table.inf-table tbody tr{
+      border-bottom:1px solid rgba(255,255,255,.04);
+      transition:background .1s;
+    }
+    table.inf-table tbody tr:hover{ background:rgba(255,255,255,.03); }
+    table.inf-table tbody tr.has-det{ background:rgba(231,76,60,.05); }
+    table.inf-table tbody tr.has-det:hover{ background:rgba(231,76,60,.09); }
+    table.inf-table td{ padding:8px 14px; vertical-align:middle; }
+    td.cell-ts { white-space:nowrap; color:var(--muted); font-family:ui-monospace,monospace; }
+    td.cell-cam{ white-space:nowrap; font-weight:650; }
+    td.cell-seq{ white-space:nowrap; color:var(--muted); font-family:ui-monospace,monospace; }
+
+    .det-pill{
+      display:inline-block; margin:1px 2px;
+      padding:2px 7px; border-radius:999px;
+      font-size:11px; font-weight:600;
+      background:rgba(231,76,60,.15);
+      border:1px solid rgba(231,76,60,.30);
+      color:#ffb4b0;
+    }
+    .det-pill.low{
+      background:rgba(52,152,219,.12);
+      border-color:rgba(52,152,219,.25);
+      color:#93c5fd;
+    }
+    .clean-dash{ color:var(--muted); }
+
+    .img-thumb{
+      width:64px; height:48px; object-fit:cover;
+      border-radius:6px; display:block;
+      border:1px solid rgba(255,255,255,.08);
+      cursor:zoom-in; transition:opacity .15s;
+    }
+    .img-thumb:hover{ opacity:.75; }
+    .no-img{ color:var(--muted); }
+
+    /* ── Toast ──────────────────────────────────────────────────────────────── */
     #toast{
       position:fixed; bottom:24px; right:24px;
       background:#1e2430; border:1px solid rgba(255,255,255,.12);
@@ -190,6 +366,16 @@
     #toast.budget { border-color:rgba(241,196,15,.5); }
     #toast .toast-title{ font-weight:700; font-size:13px; margin-bottom:4px; }
     #toast .toast-body { font-size:12px; color:var(--muted); }
+
+    /* ── Lightbox ───────────────────────────────────────────────────────────── */
+    #lightbox{
+      display:none; position:fixed; inset:0; z-index:10000;
+      background:rgba(0,0,0,.88);
+      align-items:center; justify-content:center;
+      cursor:zoom-out;
+    }
+    #lightbox.open{ display:flex; }
+    #lightbox img{ max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 0 60px rgba(0,0,0,.8); }
   </style>
 </head>
 
@@ -199,61 +385,135 @@
     <span class="pill" id="hostPill">host: –</span>
     <span class="pill" id="hintPill">WHEP → MediaMTX</span>
     <span id="fsStatus">Firestore: connecting…</span>
-    <button id="reconnectBtn">Reconnect all</button>
+    <button class="action-btn" id="reconnectBtn">Reconnect all</button>
   </header>
 
-  <main class="grid">
-    <section class="tile" data-cam="cam1">
-      <div class="top">
-        <span class="dot" id="dot-cam1"></span>
-        <span class="name">cam1</span>
-        <span class="status" id="status-cam1">idle</span>
-      </div>
-      <div class="stage">
-        <video id="v-cam1" autoplay playsinline muted></video>
-        <canvas id="c-cam1"></canvas>
-      </div>
-    </section>
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-page="live">Live streams</button>
+    <button class="tab-btn"        data-page="inference">Inference log</button>
+  </nav>
 
-    <section class="tile" data-cam="cam2">
-      <div class="top">
-        <span class="dot" id="dot-cam2"></span>
-        <span class="name">cam2</span>
-        <span class="status" id="status-cam2">idle</span>
-      </div>
-      <div class="stage">
-        <video id="v-cam2" autoplay playsinline muted></video>
-        <canvas id="c-cam2"></canvas>
-      </div>
-    </section>
-
-    <section class="tile" data-cam="cam3">
-      <div class="top">
-        <span class="dot" id="dot-cam3"></span>
-        <span class="name">cam3</span>
-        <span class="status" id="status-cam3">idle</span>
-      </div>
-      <div class="stage">
-        <video id="v-cam3" autoplay playsinline muted></video>
-        <canvas id="c-cam3"></canvas>
-      </div>
-    </section>
-
-    <section class="tile" id="dashTile">
-      <div class="top">
-        <span class="dot ok"></span>
-        <span class="name">dashboard</span>
-        <span class="status" id="dashStatus">events: 0</span>
-      </div>
-      <div class="dashBody">
-        <div class="dashRow">
-          <button class="btn" id="clearEventsBtn">Clear</button>
-          <span class="hint">Live from Firestore · alerts collection</span>
+  <!-- ── Page 1: Live streams ─────────────────────────────────────────────── -->
+  <div class="page active" id="page-live">
+    <main class="grid">
+      <section class="tile" data-cam="cam1">
+        <div class="top">
+          <span class="dot" id="dot-cam1"></span>
+          <span class="name">cam1</span>
+          <span class="status" id="status-cam1">idle</span>
         </div>
-        <div id="eventLog"></div>
+        <div class="stage">
+          <video id="v-cam1" autoplay playsinline muted></video>
+          <canvas id="c-cam1"></canvas>
+        </div>
+      </section>
+
+      <section class="tile" data-cam="cam2">
+        <div class="top">
+          <span class="dot" id="dot-cam2"></span>
+          <span class="name">cam2</span>
+          <span class="status" id="status-cam2">idle</span>
+        </div>
+        <div class="stage">
+          <video id="v-cam2" autoplay playsinline muted></video>
+          <canvas id="c-cam2"></canvas>
+        </div>
+      </section>
+
+      <section class="tile" data-cam="cam3">
+        <div class="top">
+          <span class="dot" id="dot-cam3"></span>
+          <span class="name">cam3</span>
+          <span class="status" id="status-cam3">idle</span>
+        </div>
+        <div class="stage">
+          <video id="v-cam3" autoplay playsinline muted></video>
+          <canvas id="c-cam3"></canvas>
+        </div>
+      </section>
+
+      <section class="tile" id="dashTile">
+        <div class="top">
+          <span class="dot ok"></span>
+          <span class="name">dashboard</span>
+          <span class="status" id="dashStatus">events: 0</span>
+        </div>
+        <div class="dashBody">
+          <div class="dashRow">
+            <button class="btn" id="clearEventsBtn">Clear</button>
+            <span class="hint">Live from Firestore · alerts collection</span>
+          </div>
+          <div id="eventLog"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ── Page 2: Inference log ────────────────────────────────────────────── -->
+  <div class="page page-inference" id="page-inference">
+
+    <div class="section-label">Latest frame per camera</div>
+
+    <div class="frames-row">
+      <div class="frame-tile">
+        <div class="ftop">
+          <span class="fname">cam1</span>
+          <span class="badge clean" id="fbadge-cam1">waiting</span>
+          <span class="fts" id="fts-cam1">—</span>
+        </div>
+        <div class="frame-img-wrap">
+          <img   id="fimg-cam1" src="" alt="" style="display:none" />
+          <div class="frame-placeholder" id="fph-cam1">No inference yet</div>
+        </div>
       </div>
-    </section>
-  </main>
+
+      <div class="frame-tile">
+        <div class="ftop">
+          <span class="fname">cam2</span>
+          <span class="badge clean" id="fbadge-cam2">waiting</span>
+          <span class="fts" id="fts-cam2">—</span>
+        </div>
+        <div class="frame-img-wrap">
+          <img   id="fimg-cam2" src="" alt="" style="display:none" />
+          <div class="frame-placeholder" id="fph-cam2">No inference yet</div>
+        </div>
+      </div>
+
+      <div class="frame-tile">
+        <div class="ftop">
+          <span class="fname">cam3</span>
+          <span class="badge clean" id="fbadge-cam3">waiting</span>
+          <span class="fts" id="fts-cam3">—</span>
+        </div>
+        <div class="frame-img-wrap">
+          <img   id="fimg-cam3" src="" alt="" style="display:none" />
+          <div class="frame-placeholder" id="fph-cam3">No inference yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-tile">
+      <div class="ltop">
+        <span class="lname">Inference log</span>
+        <span class="lhint">Live · Firestore inferences collection · last 100</span>
+        <span class="lcount" id="infCount">0 events</span>
+      </div>
+      <div class="log-scroll">
+        <table class="inf-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Camera</th>
+              <th>Seq</th>
+              <th>Detections</th>
+              <th>Frame</th>
+            </tr>
+          </thead>
+          <tbody id="infBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast -->
   <div id="toast">
@@ -261,16 +521,38 @@
     <div class="toast-body"  id="toastBody"></div>
   </div>
 
+  <!-- Lightbox -->
+  <div id="lightbox">
+    <img id="lightboxImg" src="" alt="Inference frame" />
+  </div>
+
   <script>
-    // ── WebRTC config ───────────────────────────────────────────────────────
-    const HOST = window.MEDIAMTX_HOST || "hire-measures-ink-buf.trycloudflare.com";
+    // ── Tab switching ─────────────────────────────────────────────────────────
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("page-" + btn.dataset.page).classList.add("active");
+      });
+    });
+
+    // ── Lightbox ──────────────────────────────────────────────────────────────
+    const lightbox    = document.getElementById("lightbox");
+    const lightboxImg = document.getElementById("lightboxImg");
+    lightbox.addEventListener("click", () => lightbox.classList.remove("open"));
+    function openLightbox(src) { lightboxImg.src = src; lightbox.classList.add("open"); }
+
+    // ── WebRTC config ─────────────────────────────────────────────────────────
+    const HOST = window.MEDIAMTX_HOST || "degrees-front-earning-consult.trycloudflare.com";
     document.getElementById("hostPill").textContent = `host: ${HOST}`;
     const cams = ["cam1","cam2","cam3"];
     const pcs  = new Map();
     const latestBoxes      = { cam1: [], cam2: [], cam3: [] };
     const lastDetectionTs  = { cam1: 0,  cam2: 0,  cam3: 0  };
-    const DETECTION_TTL_MS = 10_000; // clear boxes 10 s after last detection
-    const pageLoadTime = new Date();
+    const DETECTION_TTL_MS = 10_000;
+    const pageLoadTime     = new Date();
+    const HIGH_SEV         = new Set(["spagetti","not_sticking","layer_shift","warping"]);
 
     // ── Toast ─────────────────────────────────────────────────────────────────
     let toastTimer = null;
@@ -292,12 +574,12 @@
 
     // ── WHEP ──────────────────────────────────────────────────────────────────
     async function startWhep(cam) {
-      const videoEl  = document.getElementById(`v-${cam}`);
-      const whepUrl  = `https://${HOST}/${cam}/whep`;
+      const videoEl = document.getElementById(`v-${cam}`);
+      const whepUrl = `https://${HOST}/${cam}/whep`;
 
       if (pcs.has(cam)) { try { pcs.get(cam).close(); } catch {} pcs.delete(cam); }
-
       setStatus(cam, null, "connecting...");
+
       const pc = new RTCPeerConnection();
       pcs.set(cam, pc);
       pc.addTransceiver("video", { direction:"recvonly" });
@@ -310,17 +592,11 @@
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-
       const res = await fetch(whepUrl, {
-        method:"POST",
-        headers:{"Content-Type":"application/sdp"},
-        body: offer.sdp
+        method:"POST", headers:{"Content-Type":"application/sdp"}, body: offer.sdp
       });
-
       if (!res.ok) { setStatus(cam, false, `whep ${res.status}`); return; }
-
-      const answerSdp = await res.text();
-      await pc.setRemoteDescription({ type:"answer", sdp: answerSdp });
+      await pc.setRemoteDescription({ type:"answer", sdp: await res.text() });
       setStatus(cam, null, "negotiated");
     }
 
@@ -335,10 +611,8 @@
       const video  = document.getElementById(`v-${cam}`);
       const canvas = document.getElementById(`c-${cam}`);
       const ctx    = canvas.getContext("2d");
-
       if (video.videoWidth && canvas.width !== video.videoWidth) {
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
       }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!boxes || !boxes.length) return;
@@ -349,27 +623,21 @@
         nozzle_clog:"#1abc9c", foreign_object_on_print_area:"#e91e63",
         not_sticking:"#ff5722", spagetti:"#2ecc71",
       };
-
-      ctx.lineWidth = 3;
-      ctx.font = "14px sans-serif";
+      ctx.lineWidth = 3; ctx.font = "14px sans-serif";
 
       for (const b of boxes) {
-        const x = b.x * canvas.width;
-        const y = b.y * canvas.height;
-        const w = b.w * canvas.width;
-        const h = b.h * canvas.height;
+        const x = b.x * canvas.width,  y = b.y * canvas.height;
+        const w = b.w * canvas.width,  h = b.h * canvas.height;
         const color = palette[b.label] ?? "#2ecc71";
         const conf  = b.confidence != null ? ` ${(b.confidence*100).toFixed(0)}%` : "";
         const label = `${b.label}${conf}`;
-
         ctx.strokeStyle = color;
         ctx.strokeRect(x, y, w, h);
-
         const tw = ctx.measureText(label).width;
         ctx.fillStyle = "rgba(0,0,0,0.65)";
-        ctx.fillRect(x, Math.max(0, y-18), tw+8, 20);
+        ctx.fillRect(x, Math.max(0,y-18), tw+8, 20);
         ctx.fillStyle = color;
-        ctx.fillText(label, x+4, Math.max(14, y-4));
+        ctx.fillText(label, x+4, Math.max(14,y-4));
       }
     }
 
@@ -377,8 +645,7 @@
       const now = Date.now();
       for (const cam of cams) {
         if (latestBoxes[cam].length && now - lastDetectionTs[cam] > DETECTION_TTL_MS) {
-          latestBoxes[cam] = [];
-          setStatus(cam, true, "online");
+          latestBoxes[cam] = []; setStatus(cam, true, "online");
         }
         drawBoxes(cam, latestBoxes[cam]);
       }
@@ -386,9 +653,7 @@
     }
     requestAnimationFrame(redrawLoop);
 
-    // ── Event log ─────────────────────────────────────────────────────────────
-    let eventCount = 0;
-
+    // ── Timestamp formatting ──────────────────────────────────────────────────
     function fmtTs(isoStr) {
       try {
         return new Date(isoStr).toLocaleString("en-GB", {
@@ -397,29 +662,32 @@
         });
       } catch { return isoStr; }
     }
+    function fmtTsShort(isoStr) {
+      try {
+        return new Date(isoStr).toLocaleString("en-GB", {
+          day:"2-digit", month:"short",
+          hour:"2-digit", minute:"2-digit", second:"2-digit"
+        });
+      } catch { return isoStr; }
+    }
 
-    function addEventLine(cam, text, ts, isAlert=false, isBudget=false) {
+    // ── Page 1 event log ──────────────────────────────────────────────────────
+    let eventCount = 0;
+    function addEventLine(cam, text, ts, isAlert=false) {
       const log  = document.getElementById("eventLog");
       const wrap = document.createElement("div");
-      wrap.className = "eventLine" + (isAlert ? " alert" : "") + (isBudget ? " budget" : "");
-
+      wrap.className = "eventLine" + (isAlert ? " alert" : "");
       const meta = document.createElement("div");
       meta.className = "meta";
       meta.textContent = `[${fmtTs(ts)}] ${cam}`;
-
       const msg = document.createElement("div");
-      msg.className = "msg";
-      msg.textContent = text;
-
-      wrap.appendChild(meta);
-      wrap.appendChild(msg);
+      msg.className = "msg"; msg.textContent = text;
+      wrap.appendChild(meta); wrap.appendChild(msg);
       log.prepend(wrap);
-
       eventCount++;
       document.getElementById("dashStatus").textContent = `events: ${eventCount}`;
     }
 
-    // ── Alert flash ───────────────────────────────────────────────────────────
     let alertTimer = null;
     function flashGlobalAlert(ms=2500) {
       document.body.classList.add("alerting");
@@ -431,75 +699,182 @@
       document.getElementById("eventLog").innerHTML = "";
       eventCount = 0;
       document.getElementById("dashStatus").textContent = "events: 0";
-      document.body.classList.remove("alerting");
-      document.body.classList.remove("budget-alert");
+      document.body.classList.remove("alerting","budget-alert");
     });
 
-    // ── Firestore realtime listener ───────────────────────────────────────────
+    // ── Page 2: latest-frame tiles ────────────────────────────────────────────
+    const latestFrameTs = { cam1: "", cam2: "", cam3: "" };
+
+    function updateFrameTile(cam, frameUrl, ts, detections) {
+      const img   = document.getElementById(`fimg-${cam}`);
+      const ph    = document.getElementById(`fph-${cam}`);
+      const tsEl  = document.getElementById(`fts-${cam}`);
+      const badge = document.getElementById(`fbadge-${cam}`);
+
+      tsEl.textContent = fmtTsShort(ts);
+
+      if (frameUrl) {
+        img.src = frameUrl;
+        img.style.display = "block";
+        ph.style.display  = "none";
+        img.onclick = () => openLightbox(frameUrl);
+      }
+
+      const hasD = detections && detections.length > 0;
+      if (hasD) {
+        badge.className   = "badge";
+        badge.textContent = detections.map(d => d.label).join(", ");
+      } else {
+        badge.className   = "badge clean";
+        badge.textContent = "clean";
+      }
+    }
+
+    // ── Page 2: inference log table ───────────────────────────────────────────
+    let infCount = 0;
+
+    function addInferenceRow(cam, ts, seq, detections, frameUrl) {
+      const body = document.getElementById("infBody");
+      const hasD = detections && detections.length > 0;
+
+      const tr = document.createElement("tr");
+      if (hasD) tr.classList.add("has-det");
+
+      // Time
+      const tdTs = document.createElement("td");
+      tdTs.className = "cell-ts"; tdTs.textContent = fmtTsShort(ts);
+
+      // Camera
+      const tdCam = document.createElement("td");
+      tdCam.className = "cell-cam"; tdCam.textContent = cam;
+
+      // Seq
+      const tdSeq = document.createElement("td");
+      tdSeq.className = "cell-seq"; tdSeq.textContent = seq >= 0 ? `#${seq}` : "—";
+
+      // Detections
+      const tdDets = document.createElement("td");
+      if (hasD) {
+        for (const d of detections) {
+          const pill = document.createElement("span");
+          pill.className = "det-pill" + (HIGH_SEV.has(d.label) ? "" : " low");
+          const conf = d.confidence != null ? ` ${(d.confidence*100).toFixed(0)}%` : "";
+          pill.textContent = `${d.label}${conf}`;
+          tdDets.appendChild(pill);
+        }
+      } else {
+        const span = document.createElement("span");
+        span.className = "clean-dash"; span.textContent = "—";
+        tdDets.appendChild(span);
+      }
+
+      // Frame thumbnail
+      const tdImg = document.createElement("td");
+      if (frameUrl) {
+        const thumb = document.createElement("img");
+        thumb.className = "img-thumb";
+        thumb.src = frameUrl; thumb.alt = `${cam} frame`;
+        thumb.title = "Click to enlarge";
+        thumb.onclick = () => openLightbox(frameUrl);
+        tdImg.appendChild(thumb);
+      } else {
+        const span = document.createElement("span");
+        span.className = "no-img"; span.textContent = "—";
+        tdImg.appendChild(span);
+      }
+
+      tr.append(tdTs, tdCam, tdSeq, tdDets, tdImg);
+      body.prepend(tr);
+
+      infCount++;
+      document.getElementById("infCount").textContent = `${infCount} events`;
+    }
+
+    // ── Firestore realtime listeners ──────────────────────────────────────────
     window.addEventListener("firestoreReady", () => {
       const { db, collection, onSnapshot, query, orderBy, limit } = window._firestoreReady;
 
       document.getElementById("fsStatus").textContent = "Firestore: listening";
       document.getElementById("fsStatus").style.color = "#2ecc71";
 
-      const seen = new Set();
+      const seenAlerts = new Set();
+      const seenInf    = new Set();
 
-      const q = query(
-        collection(db, "alerts"),
-        orderBy("created_at", "desc"),
-        limit(50)
+      // ── alerts → page 1 event log ─────────────────────────────────────────
+      onSnapshot(
+        query(collection(db, "alerts"), orderBy("created_at","desc"), limit(50)),
+        (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type !== "added") return;
+            const docId = change.doc.id;
+            if (seenAlerts.has(docId)) return;
+            seenAlerts.add(docId);
+
+            const d = change.doc.data();
+            if ((d.created_at?.toDate?.() ?? new Date(0)) < pageLoadTime) return;
+
+            const cam        = d.camera_id ?? "unknown";
+            const detections = d.detections ?? [];
+            const ts         = d.timestamp ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
+            const isHighSev  = detections.some(det => HIGH_SEV.has(det.label));
+
+            if (cams.includes(cam)) {
+              lastDetectionTs[cam] = Date.now();
+              latestBoxes[cam] = detections.map(det => ({
+                label:det.label, confidence:det.confidence,
+                x: det.x ?? (det.bbox?.[0] ?? 0) / 640,
+                y: det.y ?? (det.bbox?.[1] ?? 0) / 480,
+                w: det.w ?? ((det.bbox?.[2] ?? 0) - (det.bbox?.[0] ?? 0)) / 640,
+                h: det.h ?? ((det.bbox?.[3] ?? 0) - (det.bbox?.[1] ?? 0)) / 480,
+              }));
+            }
+
+            for (const det of detections) {
+              const conf = det.confidence != null ? ` (${(det.confidence*100).toFixed(0)}%)` : "";
+              addEventLine(cam, `${det.label}${conf}`, ts, isHighSev);
+            }
+
+            if (isHighSev) {
+              flashGlobalAlert(3000);
+              showToast("Defect Detected", `${cam}: ${detections.map(d=>d.label).join(", ")}`, "defect");
+            }
+          });
+        },
+        (err) => {
+          console.error("Firestore alerts error:", err);
+          document.getElementById("fsStatus").textContent = "Firestore: error";
+          document.getElementById("fsStatus").style.color = "#e74c3c";
+        }
       );
 
-      onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type !== "added") return;
+      // ── inferences → page 2 ───────────────────────────────────────────────
+      onSnapshot(
+        query(collection(db, "inferences"), orderBy("created_at","desc"), limit(100)),
+        (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type !== "added") return;
+            const docId = change.doc.id;
+            if (seenInf.has(docId)) return;
+            seenInf.add(docId);
 
-          const docId = change.doc.id;
-          if (seen.has(docId)) return;
-          seen.add(docId);
+            const d          = change.doc.data();
+            const cam        = d.camera_id ?? "unknown";
+            const detections = d.detections ?? [];
+            const ts         = d.timestamp ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
+            const seq        = d.seq ?? -1;
+            const frameUrl   = d.frame_url ?? "";
 
-          const d = change.doc.data();
-          const docTime = d.created_at?.toDate?.() ?? new Date(0);
-          if (docTime < pageLoadTime) return;
+            // Update the latest-frame tile only if this is newer
+            if (cams.includes(cam) && ts > latestFrameTs[cam]) {
+              latestFrameTs[cam] = ts;
+              updateFrameTile(cam, frameUrl, ts, detections);
+            }
 
-          const cam        = d.camera_id ?? "unknown";
-          const detections = d.detections ?? [];
-          const ts         = d.timestamp  ?? d.created_at?.toDate?.()?.toISOString?.() ?? "";
-          const isHighSev  = detections.some(det =>
-            ["spagetti","not_sticking","layer_shift","warping"].includes(det.label)
-          );
-
-          if (cams.includes(cam)) {
-            lastDetectionTs[cam] = Date.now();
-            latestBoxes[cam] = detections.map(det => ({
-              label:      det.label,
-              confidence: det.confidence,
-              x: det.x ?? (det.bbox?.[0] ?? 0) / 640,
-              y: det.y ?? (det.bbox?.[1] ?? 0) / 480,
-              w: det.w ?? ((det.bbox?.[2] ?? 0) - (det.bbox?.[0] ?? 0)) / 640,
-              h: det.h ?? ((det.bbox?.[3] ?? 0) - (det.bbox?.[1] ?? 0)) / 480,
-            }));
-          }
-
-          for (const det of detections) {
-            const conf = det.confidence != null ? ` (${(det.confidence*100).toFixed(0)}%)` : "";
-            addEventLine(cam, `${det.label}${conf}`, ts, isHighSev);
-          }
-
-          if (isHighSev) {
-            flashGlobalAlert(3000);
-            showToast(
-              "⚠️ Defect Detected",
-              `${cam}: ${detections.map(d => d.label).join(", ")}`,
-              "defect"
-            );
-          }
-        });
-      }, (err) => {
-        console.error("Firestore error:", err);
-        document.getElementById("fsStatus").textContent = "Firestore: error";
-        document.getElementById("fsStatus").style.color = "#e74c3c";
-      });
+            addInferenceRow(cam, ts, seq, detections, frameUrl);
+          });
+        },
+        (err) => { console.error("Firestore inferences error:", err); }
+      );
     });
 
     // ── Boot ──────────────────────────────────────────────────────────────────

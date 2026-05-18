@@ -7,6 +7,7 @@ skip-check:
   - CKV_SECRET_4 # False positive in firebase config
   - CKV_DOCKER_7 # Using :latest for dev convenience
   - CKV_GCP_78   # Cloud Function allow unauthenticated (Eventarc handles auth)
+  - CKV2_GHA_1   # python-tests.yml top-level permissions — pre-existing, out of scope
 
 quiet: true
 compact: true

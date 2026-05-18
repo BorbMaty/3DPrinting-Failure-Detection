@@ -50,11 +50,14 @@ def _fake_cap(read_results):
 
 def _fake_frame():
     """Return a minimal mock frame that cv2.resize / imencode will accept."""
+    frame = MagicMock()
+    # Use dimensions larger than defaults (1280×720) so the resize branch is exercised
+    frame.shape = (1440, 2560, 3)
     buf = MagicMock()
-    buf.tobytes.return_value = b"\xff\xd8\xff\xe0fake_jpeg"  # fake JPEG bytes
+    buf.tobytes.return_value = b"\xff\xd8\xff\xe0fake_jpeg"
     fe.cv2.resize.return_value = MagicMock()
     fe.cv2.imencode.return_value = (True, buf)
-    return MagicMock()
+    return frame
 
 
 # ── capture_loop: stream lifecycle ────────────────────────────────────────────

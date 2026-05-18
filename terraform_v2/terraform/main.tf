@@ -67,6 +67,53 @@ resource "google_project_service" "apis" {
 
 # ── GCS: Model Storage ────────────────────────────────────────────────────────
 
+# ── GCS: Inference Frames ─────────────────────────────────────────────────────
+# Stores one JPEG per inference. Public read lets the dashboard display frames
+# directly. 7-day lifecycle keeps storage costs low (~few MB/day per camera).
+
+#checkov:skip=CKV_GCP_28:Public read is intentional — frames are non-sensitive
+#checkov:skip=CKV_GCP_78:Versioning not needed for transient frame storage
+resource "google_storage_bucket" "frames" {
+  #checkov:skip=CKV_GCP_28:Public read intentional — dashboard displays inference frames
+  #checkov:skip=CKV_GCP_114:Public access prevention disabled intentionally for dashboard
+  #checkov:skip=CKV_GCP_78:Versioning not needed for transient frame storage
+  #checkov:skip=CKV_GCP_62:Access logs not needed for transient frames
+  name                        = "${var.project_id}-frames"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "inherited"
+  force_destroy               = true
+
+  lifecycle_rule {
+    action { type = "Delete" }
+    condition { age = 7 }
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+#checkov:skip=CKV_GCP_28:allUsers read is intentional — frames are public for dashboard display
+resource "google_storage_bucket_iam_member" "frames_public_read" {
+  #checkov:skip=CKV_GCP_28:allUsers read intentional for dashboard
+  bucket = google_storage_bucket.frames.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+# judge-svc runs the Vertex AI prediction container and uploads frames
+resource "google_storage_bucket_iam_member" "frames_judge_svc_write" {
+  bucket = google_storage_bucket.frames.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:judge-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# Default compute SA also used by the judge container at runtime
+resource "google_storage_bucket_iam_member" "frames_compute_sa_write" {
+  bucket = google_storage_bucket.frames.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
 resource "google_storage_bucket" "models" {
   name                        = var.model_gcs_bucket
   location                    = var.region

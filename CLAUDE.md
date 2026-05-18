@@ -73,7 +73,7 @@ gcloud ai models upload \
   --container-ports=8080 \
   --container-health-route=/healthz \
   --container-predict-route=/predict \
-  --container-env-vars=GCP_PROJECT=printermonitor-488112,DETECTIONS_TOPIC=detections-out,MODEL_PATH=/app/best.pt,CONF_THRESHOLD=0.35,STREAK_REQUIRED=3
+  --container-env-vars=GCP_PROJECT=printermonitor-488112,DETECTIONS_TOPIC=detections-out,MODEL_PATH=/app/best.pt,CONF_THRESHOLD=0.35,STREAK_REQUIRED=3,FRAMES_BUCKET=printermonitor-488112-frames
 
 # Deploy to endpoint — MUST use --service-account=judge-svc (required for Pub/Sub publish permission)
 gcloud ai endpoints deploy-model 6900414029643120640 \
@@ -90,6 +90,10 @@ gcloud ai endpoints deploy-model 6900414029643120640 \
 gcloud ai endpoints undeploy-model 6900414029643120640 \
   --region=europe-west1 --project=printermonitor-488112 \
   --deployed-model-id=DEPLOYED_MODEL_ID
+
+# After undeploy: purge the frames-in backlog so stale frames don't slam the judge on next deploy
+gcloud pubsub subscriptions seek eventarc-europe-west1-dispatcher-635712-sub-152 \
+  --time=$(date -u +%Y-%m-%dT%H:%M:%SZ) --project=printermonitor-488112
 
 # Get deployed model ID
 gcloud ai endpoints describe 6900414029643120640 \
@@ -139,13 +143,13 @@ Raspberry Pi (3 USB cameras)
 | **frame-extractor** | Cloud Run container | Manual | OpenCV frame capture → base64 → Pub/Sub `frames-in` |
 | **dispatcher** | Cloud Function (Gen2) | Eventarc `frames-in` | Auth token management → HTTP POST to Vertex AI endpoint |
 | **judge** | Vertex AI container (PyTorch 2.2 + CUDA 12.1) | HTTP POST `/predict` | YOLOv8x inference → Pub/Sub `detections-out`; health at `/healthz` |
-| **alert-manager** | Cloud Function (Gen2) | Eventarc `detections-out` | Email cooldown (60s/camera), Firestore writes, FCM push |
+| **alert-manager** | Cloud Function (Gen2) | Eventarc `detections-out` | Email cooldown (single global 300s lock), Firestore writes, FCM push |
 | **budget-notifier** | Cloud Function (Gen2) | Eventarc `budget-notifications` | Firestore write + FCM push |
 | **mediamtx** | Raspberry Pi container | - | RTSP in → WebRTC WHEP out on port 8889 |
 
 ### Detection Classes & Severity
 
-- **High-severity** (trigger email + FCM): `spaghetti`, `not_sticking`, `layer_shift`, `warping`
+- **High-severity** (trigger email + FCM): `spagetti`, `not_sticking`, `layer_shift`, `warping`
 - **Low-severity** (Firestore only): `stringing`, `under_extrusion`, `over_extrusion`, `nozzle_clog`, `foreign_object`
 - **Confidence threshold:** 0.35 (configurable via Terraform variable)
 

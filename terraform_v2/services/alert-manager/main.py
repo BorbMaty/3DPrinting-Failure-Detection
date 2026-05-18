@@ -19,7 +19,6 @@ COOLDOWN_SECONDS     = int(os.environ.get("COOLDOWN_SECONDS", "300"))
 GMAIL_ADDRESS      = os.environ["GMAIL_ADDRESS"]
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 
-# High-severity classes that warrant an email alert
 HIGH_SEV = {"spagetti", "not_sticking", "layer_shift", "warping"}
 
 # ── Init ──────────────────────────────────────────────────────────────────────
@@ -88,25 +87,34 @@ def handle_detection(cloud_event):
     detections = payload.get("detections", [])
     ts         = payload.get("ts", now_iso())
     seq        = payload.get("seq", -1)
+    frame_url  = payload.get("frame_url", "")
 
-    # Filter by confidence threshold
-    detections = [d for d in detections if d.get("confidence", 0) >= CONF_THRESHOLD]
-
-    if not detections:
-        return
-
-    # Write to Firestore
-    db.collection(FIRESTORE_COLLECTION).add({
+    # Always write every inference result (including zero-detection frames)
+    db.collection("inferences").add({
         "camera_id":  camera_id,
         "detections": detections,
         "timestamp":  ts,
         "seq":        seq,
+        "frame_url":  frame_url,
         "created_at": firestore.SERVER_TIMESTAMP,
     })
-    print(f"Alert written: camera={camera_id} detections={len(detections)}", flush=True)
 
-    # Send email for high-severity detections only, with cooldown
-    high_sev = [d for d in detections if d.get("label") in HIGH_SEV]
+    # Confidence-filter for the alerts collection (existing behaviour)
+    high_conf = [d for d in detections if d.get("confidence", 0) >= CONF_THRESHOLD]
+
+    if not high_conf:
+        return
+
+    db.collection(FIRESTORE_COLLECTION).add({
+        "camera_id":  camera_id,
+        "detections": high_conf,
+        "timestamp":  ts,
+        "seq":        seq,
+        "created_at": firestore.SERVER_TIMESTAMP,
+    })
+    print(f"Alert written: camera={camera_id} detections={len(high_conf)}", flush=True)
+
+    high_sev = [d for d in high_conf if d.get("label") in HIGH_SEV]
     if high_sev and not is_on_cooldown("global_email"):
         rows = "".join(
             f"<tr><td>{d['label']}</td><td>{d.get('confidence', 0)*100:.0f}%</td></tr>"

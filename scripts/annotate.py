@@ -3,7 +3,7 @@
 cvat_auto_annotate.py - Auto-annotate CVAT tasks using local YOLOv8x weights.
 
 Usage:
-    python3 annotate.py --weights /path/to/best.pt \
+    python3 annotate.py --weights /home/lucy/ThesisTest/3DPrinting-Failure-Detection/terraform_v2/services/judge/best.pt \
         --cvat-url http://localhost:8080 \
         --username mara --password alma \
         --task-id 23
@@ -240,3 +240,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#usage 
