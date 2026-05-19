@@ -594,3 +594,188 @@ resource "google_cloud_run_v2_service_iam_member" "budget_notifier_invoker" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.alert_manager.email}"
 }
+
+# ── Dead-letter queues ────────────────────────────────────────────────────────
+# Catch poison-pill messages (corrupt frames / unhandled exceptions) that exhaust
+# their retry budget so they don't block the Eventarc subscription indefinitely.
+# Covered pipelines: frames-in → dispatcher, detections-out → alert-manager.
+# budget-notifier uses RETRY_POLICY_DO_NOT_RETRY so DLQ is not needed there.
+
+#checkov:skip=CKV_GCP_83:CMEK not required for thesis project
+resource "google_pubsub_topic" "frames_dead_letters" {
+  #checkov:skip=CKV_GCP_83:CMEK not required for thesis project
+  name    = "frames-in-dead-letters"
+  project = var.project_id
+
+  depends_on = [google_project_service.apis]
+}
+
+#checkov:skip=CKV_GCP_83:CMEK not required for thesis project
+resource "google_pubsub_topic" "detections_dead_letters" {
+  #checkov:skip=CKV_GCP_83:CMEK not required for thesis project
+  name    = "detections-out-dead-letters"
+  project = var.project_id
+
+  depends_on = [google_project_service.apis]
+}
+
+# Pub/Sub service agent must be able to publish to DLQ topics when forwarding
+# undeliverable messages.
+resource "google_pubsub_topic_iam_member" "frames_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.frames_dead_letters.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "detections_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.detections_dead_letters.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+# Pull subscriptions on the DLQ topics — keeps dead-lettered messages for 7 days
+# so they can be inspected instead of silently expiring.
+resource "google_pubsub_subscription" "frames_dead_letters_sub" {
+  name    = "frames-in-dead-letters-sub"
+  topic   = google_pubsub_topic.frames_dead_letters.name
+  project = var.project_id
+
+  message_retention_duration = "604800s"
+  ack_deadline_seconds       = 60
+}
+
+resource "google_pubsub_subscription" "detections_dead_letters_sub" {
+  name    = "detections-out-dead-letters-sub"
+  topic   = google_pubsub_topic.detections_dead_letters.name
+  project = var.project_id
+
+  message_retention_duration = "604800s"
+  ack_deadline_seconds       = 60
+}
+
+# Wire the dead-letter policy to the Eventarc-managed subscriptions.
+# Eventarc creates and owns these subscriptions, so Terraform cannot set
+# dead_letter_policy on them declaratively — null_resource + local-exec is the
+# standard workaround. Triggers re-run if the DLQ topic is replaced.
+resource "null_resource" "dispatcher_dlq" {
+  triggers = {
+    dlq_topic_id = google_pubsub_topic.frames_dead_letters.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud pubsub subscriptions update \
+        eventarc-europe-west1-dispatcher-635712-sub-152 \
+        --dead-letter-topic=${google_pubsub_topic.frames_dead_letters.id} \
+        --max-delivery-attempts=5 \
+        --project=${var.project_id}
+    EOT
+  }
+
+  depends_on = [
+    google_pubsub_topic.frames_dead_letters,
+    google_pubsub_topic_iam_member.frames_dlq_publisher,
+  ]
+}
+
+resource "null_resource" "alert_manager_dlq" {
+  triggers = {
+    dlq_topic_id = google_pubsub_topic.detections_dead_letters.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud pubsub subscriptions update \
+        eventarc-europe-west1-alert-manager-030900-sub-669 \
+        --dead-letter-topic=${google_pubsub_topic.detections_dead_letters.id} \
+        --max-delivery-attempts=5 \
+        --project=${var.project_id}
+    EOT
+  }
+
+  depends_on = [
+    google_pubsub_topic.detections_dead_letters,
+    google_pubsub_topic_iam_member.detections_dlq_publisher,
+  ]
+}
+
+# ── Cloud Monitoring ──────────────────────────────────────────────────────────
+# Two alerting policies: Cloud Function 5xx spike and Pub/Sub backlog stall.
+# Notifications go to the same Gmail address used for defect alerts.
+
+resource "google_monitoring_notification_channel" "email_alerts" {
+  display_name = "PrinterMonitor Email Alerts"
+  type         = "email"
+  project      = var.project_id
+
+  labels = {
+    email_address = var.gmail_address
+  }
+}
+
+# Alert when any Cloud Run service (all Gen2 functions run on Cloud Run) returns
+# more than 3 server errors in a 5-minute window — indicates a crashing function.
+resource "google_monitoring_alert_policy" "function_errors" {
+  display_name = "PrinterMonitor: Cloud Function Errors"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "5xx responses > 3 in 5 min"
+    condition_threshold {
+      filter = "resource.type=\"cloud_run_revision\" AND metric.type=\"run.googleapis.com/request_count\" AND metric.labels.response_code_class=\"5xx\""
+
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 3
+
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email_alerts.name]
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
+  depends_on = [google_monitoring_notification_channel.email_alerts]
+}
+
+# Alert when a Pub/Sub message sits undelivered for more than 60 seconds on either
+# of the two main pipeline subscriptions — indicates the dispatcher or alert-manager
+# is down, crashed, or the Vertex AI endpoint is unavailable.
+resource "google_monitoring_alert_policy" "pubsub_backlog" {
+  display_name = "PrinterMonitor: Pub/Sub Backlog Stalled"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "oldest_undelivered_message_age > 60s"
+    condition_threshold {
+      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/oldest_undelivered_message_age\" AND resource.labels.subscription_id=~\"eventarc-europe-west1-(dispatcher|alert-manager).*\""
+
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 60
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email_alerts.name]
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
+  depends_on = [google_monitoring_notification_channel.email_alerts]
+}

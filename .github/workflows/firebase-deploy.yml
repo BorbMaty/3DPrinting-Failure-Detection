@@ -1,0 +1,44 @@
+# .github/workflows/firebase-deploy.yml
+# Deploy dashboard to Firebase Hosting and sync Firestore security rules.
+# Triggered on push to main when dashboard/, firestore.rules, or firebase.json change.
+# Requires: GCP_SA_KEY secret with roles/firebasehosting.admin on printermonitor-488112.
+name: "Firebase: Deploy"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - "firestore.rules"
+      - "firebase.json"
+      - ".github/workflows/firebase-deploy.yml"
+
+permissions:
+  contents: read
+
+env:
+  GCP_PROJECT_ID: printermonitor-488112
+
+jobs:
+  deploy:
+    name: "Deploy"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy hosting and Firestore rules
+        run: |
+          firebase deploy --only hosting,firestore:rules \
+            --project ${{ env.GCP_PROJECT_ID }} \
+            --non-interactive
+          echo "### Firebase deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- [Dashboard](https://printermonitor-488112.web.app)" >> $GITHUB_STEP_SUMMARY
+          echo "- Firestore rules: updated" >> $GITHUB_STEP_SUMMARY

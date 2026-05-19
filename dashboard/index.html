@@ -767,7 +767,23 @@
     }
 
     // ── WHEP ───────────────────────────────────────────────────────────────
+    const retryDelay = { cam1: 2000, cam2: 2000, cam3: 2000 };
+    const retryTimer = { cam1: null,  cam2: null,  cam3: null  };
+    const MAX_RETRY_MS = 30_000;
+
+    function scheduleRetry(cam) {
+      if (retryTimer[cam]) return;
+      const delay = retryDelay[cam];
+      setStatus(cam, false, `retry in ${Math.round(delay / 1000)}s…`);
+      retryTimer[cam] = setTimeout(async () => {
+        retryTimer[cam] = null;
+        retryDelay[cam] = Math.min(retryDelay[cam] * 2, MAX_RETRY_MS);
+        try { await startWhep(cam); } catch (e) { console.error(e); scheduleRetry(cam); }
+      }, delay);
+    }
+
     async function startWhep(cam) {
+      if (retryTimer[cam]) { clearTimeout(retryTimer[cam]); retryTimer[cam] = null; }
       const videoEl = document.getElementById(`v-${cam}`);
       const whepUrl = `https://${HOST}/${cam}/whep`;
       if (pcs.has(cam)) { try { pcs.get(cam).close(); } catch {} pcs.delete(cam); }
@@ -776,10 +792,15 @@
       const pc = new RTCPeerConnection();
       pcs.set(cam, pc);
       pc.addTransceiver("video", { direction:"recvonly" });
-      pc.ontrack = ev => { videoEl.srcObject = ev.streams[0]; setStatus(cam, true, "online"); };
+      pc.ontrack = ev => {
+        videoEl.srcObject = ev.streams[0];
+        setStatus(cam, true, "online");
+        retryDelay[cam] = 2000;
+      };
       pc.onconnectionstatechange = () => {
         const s = pc.connectionState;
-        if (s === "failed" || s === "disconnected") setStatus(cam, false, s);
+        if (s === "failed" || s === "disconnected") scheduleRetry(cam);
+        if (s === "connected") retryDelay[cam] = 2000;
       };
 
       const offer = await pc.createOffer();
@@ -787,15 +808,20 @@
       const res = await fetch(whepUrl, {
         method:"POST", headers:{"Content-Type":"application/sdp"}, body: offer.sdp
       });
-      if (!res.ok) { setStatus(cam, false, `whep ${res.status}`); return; }
+      if (!res.ok) { setStatus(cam, false, `whep ${res.status}`); scheduleRetry(cam); return; }
       await pc.setRemoteDescription({ type:"answer", sdp: await res.text() });
       setStatus(cam, null, "negotiated");
     }
 
     async function startAll() {
-      for (const cam of cams) { try { await startWhep(cam); } catch(e) { console.error(e); } }
+      for (const cam of cams) {
+        try { await startWhep(cam); } catch(e) { console.error(e); scheduleRetry(cam); }
+      }
     }
-    document.getElementById("reconnectBtn").addEventListener("click", startAll);
+    document.getElementById("reconnectBtn").addEventListener("click", () => {
+      for (const cam of cams) retryDelay[cam] = 2000;
+      startAll();
+    });
 
     // ── Canvas bbox overlay ────────────────────────────────────────────────
     function drawBoxes(cam, boxes) {
