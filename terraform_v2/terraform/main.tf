@@ -755,14 +755,19 @@ resource "google_monitoring_alert_policy" "pubsub_backlog" {
   project      = var.project_id
   combiner     = "OR"
 
+  # num_undelivered_messages is always emitted (even as 0), so its metric
+  # descriptor exists from the moment the subscription is created.
+  # oldest_undelivered_message_age is only registered after the first backlog
+  # occurs, causing API 404s on fresh projects.
+  # At 0.1 FPS × 3 cameras = 0.3 msg/s: >20 undelivered for 5 min = real stall.
   conditions {
-    display_name = "dispatcher: oldest_undelivered_message_age > 60s"
+    display_name = "dispatcher: undelivered messages > 20 for 5 min"
     condition_threshold {
-      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/oldest_undelivered_message_age\" AND resource.labels.subscription_id=\"eventarc-europe-west1-dispatcher-635712-sub-152\""
+      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/num_undelivered_messages\" AND resource.labels.subscription_id=\"eventarc-europe-west1-dispatcher-635712-sub-152\""
 
-      duration        = "60s"
+      duration        = "300s"
       comparison      = "COMPARISON_GT"
-      threshold_value = 60
+      threshold_value = 20
 
       aggregations {
         alignment_period   = "60s"
@@ -772,13 +777,13 @@ resource "google_monitoring_alert_policy" "pubsub_backlog" {
   }
 
   conditions {
-    display_name = "alert-manager: oldest_undelivered_message_age > 60s"
+    display_name = "alert-manager: undelivered messages > 20 for 5 min"
     condition_threshold {
-      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/oldest_undelivered_message_age\" AND resource.labels.subscription_id=\"eventarc-europe-west1-alert-manager-030900-sub-669\""
+      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/num_undelivered_messages\" AND resource.labels.subscription_id=\"eventarc-europe-west1-alert-manager-030900-sub-669\""
 
-      duration        = "60s"
+      duration        = "300s"
       comparison      = "COMPARISON_GT"
-      threshold_value = 60
+      threshold_value = 20
 
       aggregations {
         alignment_period   = "60s"
