@@ -15,6 +15,7 @@ override.tf.json
 
 # GCP credentials / service account keys
 *.json
+!firebase.json
 service-account*.json
 *-key.json
 credentials/

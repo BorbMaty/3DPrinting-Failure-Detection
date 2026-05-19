@@ -756,9 +756,25 @@ resource "google_monitoring_alert_policy" "pubsub_backlog" {
   combiner     = "OR"
 
   conditions {
-    display_name = "oldest_undelivered_message_age > 60s"
+    display_name = "dispatcher: oldest_undelivered_message_age > 60s"
     condition_threshold {
-      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/oldest_undelivered_message_age\" AND resource.labels.subscription_id=~\"eventarc-europe-west1-(dispatcher|alert-manager).*\""
+      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/oldest_undelivered_message_age\" AND resource.labels.subscription_id=\"eventarc-europe-west1-dispatcher-635712-sub-152\""
+
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 60
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  conditions {
+    display_name = "alert-manager: oldest_undelivered_message_age > 60s"
+    condition_threshold {
+      filter = "resource.type=\"pubsub_subscription\" AND metric.type=\"pubsub.googleapis.com/subscription/oldest_undelivered_message_age\" AND resource.labels.subscription_id=\"eventarc-europe-west1-alert-manager-030900-sub-669\""
 
       duration        = "60s"
       comparison      = "COMPARISON_GT"
