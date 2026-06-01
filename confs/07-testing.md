@@ -7,16 +7,17 @@ type: testing
 
 # Testing
 
-Pure unit tests over the four Python service modules. No integration tests, no real GCP, no real PyTorch — heavy deps are stubbed at `sys.modules` level *before* the target module is imported.
+Pure unit tests over the five Python service modules. No integration tests, no real GCP, no real PyTorch — heavy deps are stubbed at `sys.modules` level *before* the target module is imported.
 
 ## Layout
 
 ```
 tests/
-├── test_judge.py            (207 lines)
-├── test_dispatcher.py       (152 lines)
-├── test_alert_manager.py    (346 lines)
-└── test_frame_extractor.py  (242 lines)
+├── test_judge.py              (207 lines)
+├── test_dispatcher.py         (152 lines)
+├── test_alert_manager.py      (346 lines)
+├── test_frame_extractor.py    (242 lines)
+└── test_budget_notifier.py    (22 tests, covers budget-notifier/main.py)
 ```
 
 Plus `requirements-test.txt`:
@@ -131,7 +132,7 @@ The same pattern is used in `test_frame_extractor.py::TestMainParsing` to escape
 | `TestHandleDetection` | confidence filter (`>=`), Firestore write happens, low-sev no email, all 4 HIGH_SEV labels trigger email, cooldown suppresses, threshold boundary (0.35 passes, 0.3499 doesn't), empty detections no-op, malformed event no-crash |
 | `TestHandleBudgetAlert` | budget Firestore write, email when not cooldown, no email when cooldown, malformed event no-crash |
 
-> **Boundary test mismatch alert**: `TestHandleDetection.test_detection_at_exact_threshold_passes` uses confidence=0.35 and `os.environ.setdefault("CONF_THRESHOLD", "0.35")`. The deployed alert-manager actually defaults to `0.20` (from `variables.tf:23`). The test setup explicitly overrides to 0.35, which means **the test is testing the code, not the deployed config**. Both should pass; just be aware.
+> **Threshold alignment**: `TestHandleDetection.test_detection_at_exact_threshold_passes` uses confidence=0.35 and `os.environ.setdefault("CONF_THRESHOLD", "0.35")`. This matches the Terraform variable default (`variables.tf:23` → `"0.35"`) and the judge container env (`CONF_THRESHOLD=0.35`). All three are in sync.
 
 ### `test_frame_extractor.py`
 
@@ -143,6 +144,18 @@ The same pattern is used in `test_frame_extractor.py::TestMainParsing` to escape
 | `TestCaptureLoopEncoding` | resize uses `FRAME_WIDTH × FRAME_HEIGHT`; encode uses `.jpg` + `JPEG_QUALITY` |
 
 This file tests `terraform_v2/services/frame-extractor/main.py` — **not** `pi_codes/frame_extractor.py` (which is the actually-deployed version, but is uncovered by tests).
+
+### `test_budget_notifier.py`
+
+| Test class | Surface |
+|---|---|
+| `TestNowIso` | `now_iso()` returns ISO-8601 UTC strings |
+| `TestSendFcmDefect` | `send_fcm_defect()` filters to high-sev detections only, builds correct FCM multicast with right title |
+| `TestSendFcmBudget` | `send_fcm_budget()` sends a budget FCM message |
+| `TestHandleDetection` | Confidence filter, Firestore write, low-sev no FCM, all 4 HIGH_SEV labels trigger FCM, cooldown suppresses, malformed event no-crash |
+| `TestHandleBudgetAlert` | Budget Firestore write, FCM send when not cooldown, no FCM when cooldown, malformed event no-crash |
+
+Uses the same sys.modules pre-import pattern as other test files. Key addition: `_mock_fa._apps = {"default": MagicMock()}` to suppress the `initialize_app()` duplicate-app guard at import time.
 
 ## Coverage gate
 
@@ -169,8 +182,10 @@ All run on `git commit`. The pytest hook uses `language: system` and `always_run
 - **YOLO inference correctness** — model is mocked; tests can't catch a bad weights file.
 - **`scripts/annotate.py`** — no tests; manual tool.
 
+All five Cloud Function service modules (`dispatcher`, `alert-manager`, `budget-notifier`, `judge`, `frame-extractor`) are now covered by unit tests and contribute to the 90% gate.
+
 ## Strategy notes for future tests
 
 - Adding a new service: copy the bootstrap pattern from `test_dispatcher.py` (smallest of the four).
 - Module-level state (e.g. `_streaks` dict in judge): tests in this codebase don't reset it between cases. New streak-filter tests should call `judge._streaks.clear()` in `setup_method`.
-- When adding tests for `firebase_admin.messaging` calls, stub `firebase_admin` in `sys.modules` exactly like google.cloud is stubbed.
+- When adding tests for `firebase_admin.messaging` calls, stub `firebase_admin` in `sys.modules` exactly like google.cloud is stubbed. **Critical detail from `test_budget_notifier.py`**: set `_mock_fa._apps = {"default": MagicMock()}` on the stub so the module-level `initialize_app()` guard (which checks `firebase_admin._apps`) is skipped — otherwise `initialize_app()` raises a duplicate-app error during import.

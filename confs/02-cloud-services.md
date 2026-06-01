@@ -80,11 +80,11 @@ Vertex AI endpoints require Bearer auth — Pub/Sub can't speak that natively. T
 **Entry point:** `handle_detection`
 **Service account:** `sa-alert-manager`
 **Memory / timeout / max-instances:** 256M / 120 s / 10
-**Env vars:** `GCP_PROJECT`, `FIRESTORE_COLLECTION=alerts`, `CONF_THRESHOLD=0.20` (from Terraform var), `COOLDOWN_SECONDS=300`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`
+**Env vars:** `GCP_PROJECT`, `FIRESTORE_COLLECTION=alerts`, `CONF_THRESHOLD=0.35` (from Terraform var), `COOLDOWN_SECONDS=300`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`
 
 ### Behaviour
 1. Decode the Pub/Sub envelope.
-2. **Confidence filter**: drop any detection with `confidence < CONF_THRESHOLD` (`>=` is the passing comparison — `0.20` passes, `0.1999` does not).
+2. **Confidence filter**: drop any detection with `confidence < CONF_THRESHOLD` (`>=` is the passing comparison — `0.35` passes, `0.3499` does not).
 3. If anything survives, `db.collection("alerts").add({...})` — `created_at` is `SERVER_TIMESTAMP`.
 4. **HIGH_SEV check**: any of `{"spagetti", "not_sticking", "layer_shift", "warping"}`. If yes and **not on cooldown for the single key `global_email`** → render an HTML email and SMTP it.
 5. `set_cooldown("global_email")` writes `{last_sent: now_iso()}` to `alert_cooldowns/global_email`.

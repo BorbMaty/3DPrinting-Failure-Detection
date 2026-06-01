@@ -55,13 +55,13 @@ To add or remove a high-severity class, both files must be edited.
 
 | Where | Default value | Source |
 |---|---|---|
-| Judge container env | `0.35` | `judge/main.py:16` (env-var fallback) |
-| Terraform variable | `0.20` | `variables.tf:20-24` |
-| Alert manager env | `0.20` | injected from `var.conf_threshold` in `main.tf:278` |
+| Judge container env | `0.35` | `judge/main.py:16` (env-var fallback); explicitly set via `gcloud ai models upload --container-env-vars` |
+| Terraform variable | `0.35` | `variables.tf:20-24` (was `0.20` — corrected to match deployment) |
+| Alert manager env | `0.35` | injected from `var.conf_threshold` in `main.tf` |
 
-Effective production behaviour: judge gets `CONF_THRESHOLD` set explicitly when the model is deployed via the manual `gcloud ai models upload --container-env-vars=...,CONF_THRESHOLD=0.35,...` (see [[09-deployment-ops]]), so judge filters at **0.35**. Alert manager re-filters at **0.20** — but since judge already filtered higher, the alert-manager filter is effectively a no-op.
+Effective production behaviour: all three thresholds are now aligned at **0.35**. The alert-manager re-filter is effectively a no-op (judge already filtered at the same threshold), but keeps the code defensive against a future judge retune.
 
-> The two thresholds are independent. Lowering one without the other has no effect. Lower judge's threshold if you want more candidates entering the streak filter; lower alert-manager's only if judge was retuned downward.
+> The two thresholds are independent — lowering one without the other has no effect. Lower judge's threshold if you want more candidates entering the streak filter; the alert-manager threshold is a backstop.
 
 ## Streak filter
 

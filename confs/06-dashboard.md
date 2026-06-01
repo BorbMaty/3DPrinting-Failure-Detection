@@ -52,7 +52,7 @@ This is **client-side public config**, not a secret. Firebase API keys identify 
 - The `Service-Worker-Allowed: /` header is required so the service worker can manage notifications across the whole origin (not just `/firebase-messaging-sw.js`).
 - `no-cache` on the SW ensures hot-fix updates aren't blocked by browser cache (FCM clients are notoriously sticky).
 
-`firebase deploy --only hosting` pushes the contents of `dashboard/` to the CDN. There's no CI job for this — manual deploys only.
+`firebase deploy --only hosting` pushes the contents of `dashboard/` to the CDN. This is now automated via `.github/workflows/firebase-deploy.yml` — any push to `main` that touches `dashboard/**`, `firestore.rules`, or `firebase.json` triggers an automatic deploy. See [[08-ci-cd#firebase-deploy.yml]].
 
 ## Layout
 
@@ -77,7 +77,7 @@ Responsive: < 1100 px → single column.
 
 `HOST` comes from `window.MEDIAMTX_HOST` with a hard-coded fallback (`hire-measures-ink-buf.trycloudflare.com`). The fallback is for the ephemeral Cloudflare quick-tunnel mode. When a Named Tunnel is configured, the fallback must be updated (or `MEDIAMTX_HOST` set somewhere earlier in the page).
 
-Reconnect strategy: connection state goes `failed`/`disconnected` → status dot turns red, user clicks "Reconnect all". No automatic retry.
+Reconnect strategy: on `iceConnectionState` `"failed"` or `"disconnected"`, the tile schedules an automatic retry with **exponential backoff** (2 s → 4 s → 8 s → … capped at 30 s). The status dot shows `"retry in Ns…"` during the wait. On successful `ontrack`/`connected`, the delay resets to 2 s. The "Reconnect all" button also resets all delays to 2 s before restarting. Per-camera state: `retryDelay[cam]` and `retryTimer[cam]` in `index.html`.
 
 ## Bounding box overlay
 
@@ -136,7 +136,6 @@ Not visible in `index.html` — there's no `navigator.serviceWorker.register()` 
 
 ## Known issues / smells
 
-- WebRTC reconnect is fully manual — `pc.connectionState === "failed"` doesn't auto-reattempt
 - HIGH_SEV duplicated in JS + Python (see [[04-ml-model#Severity tiers]])
 - FCM half-wired (SW present, SDK not initialized in page)
 - Hard-coded fallback Cloudflare hostname will rot

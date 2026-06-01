@@ -13,7 +13,7 @@ Everything in `terraform_v2/terraform/` — single root module, GCS-backed state
 
 ```
 terraform_v2/terraform/
-├── main.tf       — all resources (548 lines, single file)
+├── main.tf       — all resources (~700 lines, single file; includes DLQ and monitoring resources)
 ├── variables.tf  — 8 inputs (project_id, region, model_gcs_bucket, conf_threshold,
 │                   cloudflare_tunnel_hostname, vertex_endpoint_id,
 │                   gmail_address [sensitive], gmail_app_password [sensitive])
@@ -63,6 +63,18 @@ Three topics, all with `message_retention_duration = "3600s"` (the budget topic 
 | `budget-notifications` | GCP Cloud Billing budget | Eventarc → `budget-notifier` CF (= `alert-manager` source w/ different entry point) | |
 
 Single subscription declared in Terraform: `budget-notifications-sub` (60s ack deadline). The Eventarc-managed subscriptions for the topics above are created automatically as part of the Cloud Function trigger.
+
+### Dead-letter queues (DLQ)
+
+Two DLQ topics are managed by Terraform:
+- `frames-in-dead-letters` — receives poison-pill frames that exhaust delivery attempts
+- `detections-out-dead-letters` — receives undeliverable detection events
+
+Each has a corresponding pull subscription (`-sub` suffix) with 7-day retention for post-mortem inspection.
+
+The Eventarc-managed subscriptions (e.g. `eventarc-europe-west1-dispatcher-635712-sub-152`) cannot have `dead_letter_policy` set declaratively in Terraform because Eventarc owns those subscriptions. Instead, two `null_resource` blocks with `local-exec` provisioners run `gcloud pubsub subscriptions update --dead-letter-topic=... --max-delivery-attempts=5` after the DLQ topics are created. They re-run only when the DLQ topic ID changes (tracked via `triggers`).
+
+IAM: the Pub/Sub service agent (`service-{N}@gcp-sa-pubsub.iam`) is granted `pubsub.publisher` on both DLQ topics so it can forward dead letters.
 
 ### Firestore
 - `google_firestore_database.default` — name `(default)`, location `eur3` (multi-region Europe), type `FIRESTORE_NATIVE`. **`prevent_destroy = true`** and `ignore_changes = all`. Once created, Terraform leaves it alone.

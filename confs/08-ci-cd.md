@@ -7,7 +7,7 @@ type: ci
 
 # CI/CD (GitHub Actions + pre-commit)
 
-Four workflows in `.github/workflows/`. None of them are required-status-checks (yet); maintainers can merge regardless of CI state.
+Five workflows in `.github/workflows/`. None of them are required-status-checks (yet); maintainers can merge regardless of CI state.
 
 ## Required GitHub secrets
 
@@ -80,6 +80,27 @@ Coverage gate fails the job if < 90%. See [[07-testing]] for what's covered.
 
 > **Note**: the apply consumes the *exact plan from the PR comment*. Drift between merge and apply is impossible — Terraform fails if the resources changed since the plan was generated.
 
+## `firebase-deploy.yml`
+
+**Triggers**: push to `main` when `dashboard/**`, `firestore.rules`, `firebase.json`, or the workflow file itself change.
+
+**Steps**:
+1. checkout
+2. `google-github-actions/auth@v2` with `GCP_SA_KEY`
+3. `npm install -g firebase-tools`
+4. `firebase deploy --only hosting,firestore:rules --project printermonitor-488112 --non-interactive`
+
+Firebase CLI authenticates via the `GOOGLE_APPLICATION_CREDENTIALS` environment variable set by `google-github-actions/auth@v2` — no extra login step required.
+
+**Required IAM**: the CI service account (`sa-cicd@printermonitor-488112.iam.gserviceaccount.com`) needs `roles/firebasehosting.admin` on the project. This was granted via:
+```bash
+gcloud projects add-iam-policy-binding printermonitor-488112 \
+  --member="serviceAccount:sa-cicd@printermonitor-488112.iam.gserviceaccount.com" \
+  --role="roles/firebasehosting.admin"
+```
+
+**Note on `firebase.json`**: this file was previously blocked by the `*.json` entry in `.gitignore`. The fix was adding an `!firebase.json` exception immediately after the `*.json` rule.
+
 ## `compileLatex.yml`
 
 **Triggers**: changes under `docs/latex/**`.
@@ -129,8 +150,9 @@ PR opened
 
 Merge to main
   ├── python-tests.yml
-  ├── docker-judge.yml    → push :sha + :latest
-  ├── compileLatex.yml    → commit compiled PDF back
+  ├── docker-judge.yml        → push :sha + :latest
+  ├── firebase-deploy.yml     → deploy hosting + Firestore rules  (if dashboard/ or rules touched)
+  ├── compileLatex.yml        → commit compiled PDF back
   └── terraform.yml
        └── apply (uses tfplan artifact from plan job)
 ```
@@ -139,7 +161,6 @@ Note that `compileLatex.yml` will fail with permission denied if `secrets.EMAIL`
 
 ## Things you might want, that aren't here
 
-- **Dashboard deploy** — no workflow to `firebase deploy` on dashboard changes. Manual only.
 - **Pi codes** — no syntax check or test workflow.
 - **Scripts** — `scripts/annotate.py` and `scripts/flush_firestore.py` aren't covered.
 - **Vertex AI deploy** — manual (see [[09-deployment-ops]]). Adding this would be useful but tricky given the cost implications.

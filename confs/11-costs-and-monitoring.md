@@ -75,12 +75,28 @@ If FCM is ever re-enabled, dashboards subscribe via the Firebase SDK (`messaging
 
 The current deployed `alert-manager/main.py` does **not** publish to FCM — emails only.
 
+## Cloud Monitoring alert policies
+
+Two `google_monitoring_alert_policy` resources are defined in `main.tf` and notify via a `google_monitoring_notification_channel` (email to `var.gmail_address`):
+
+### `function_errors` — Cloud Function 5xx spike
+- **Metric**: `run.googleapis.com/request_count` on `cloud_run_revision`, filtered to `response_code_class="5xx"`
+- **Threshold**: > 3 errors in a 5-minute window (`ALIGN_SUM`, `duration=0s` — fires immediately when threshold crossed)
+- **Auto-close**: 30 min after condition clears
+
+### `pubsub_backlog` — Pub/Sub queue stalled
+- **Metric**: `pubsub.googleapis.com/subscription/num_undelivered_messages` (always emitted, even at 0 — unlike `oldest_undelivered_message_age` which only appears after the first backlog event)
+- **Subscriptions monitored**: `eventarc-europe-west1-dispatcher-635712-sub-152` and `eventarc-europe-west1-alert-manager-030900-sub-669`
+- **Threshold**: > 20 undelivered messages sustained for 5 min (`ALIGN_MAX`, one condition block per subscription)
+- **Auto-close**: 30 min after condition clears
+
+> **Implementation note**: Cloud Monitoring filter syntax does not support `=~` regex. Each subscription needs its own `conditions` block with an exact `subscription_id` string match.
+
 ## Monitoring gaps
 
 This project does **not** have:
 - **Health endpoint dashboards** — no Grafana / Cloud Monitoring dashboards configured for the services.
 - **Latency tracking** — no histogram metrics; latency numbers in [[01-architecture#Latency budget]] are eyeballed.
-- **Error rate alerts** — Cloud Functions log errors to Cloud Logging, but no alerting policy fires on error thresholds.
 - **Dataset drift / model performance monitoring** — no inference confidence histogram, no concept drift detection. If the model silently degrades, you'll find out via missed detections.
 - **Pi heartbeat** — there's no signal in GCP that the Pi is *actually* publishing. If `frame_extractor.py` dies, `frames-in` goes silent and nothing alerts. Mitigation: the dashboard's WebRTC tiles also go dark, but no email/push fires.
 - **GPU undeploy reminder** — no automated check that the judge isn't accidentally running over a weekend.

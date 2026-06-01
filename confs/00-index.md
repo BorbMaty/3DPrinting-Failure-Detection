@@ -18,7 +18,7 @@ type: index
 | **Vertex AI endpoint ID** | `6900414029643120640` |
 | **Dashboard URL** | https://printermonitor-488112.web.app |
 | **Model** | YOLOv8x, 9 classes (see [[04-ml-model]]) |
-| **Confidence threshold** | `0.20` (Terraform default) — note CLAUDE.md says 0.35 (judge code default if unset) |
+| **Confidence threshold** | `0.35` (Terraform default, judge env, alert-manager env — all in sync) |
 | **Streak filter** | 2 consecutive frames before publishing |
 | **Email cooldown** | 300s, single global key `global_email` |
 | **Capture rate (Pi)** | 0.1 fps (one frame every 10s per cam) |

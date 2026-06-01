@@ -99,7 +99,7 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 |---|---|---|
 | `GCP_PROJECT` | `printermonitor-488112` | |
 | `FIRESTORE_COLLECTION` | `alerts` | |
-| `CONF_THRESHOLD` | `0.20` (Terraform var) / `0.20` (code default) | |
+| `CONF_THRESHOLD` | `0.35` (Terraform var default) / `0.35` (code default) | |
 | `COOLDOWN_SECONDS` | `300` | 5 min |
 | `GMAIL_ADDRESS` | (required, sensitive) | passed from `var.gmail_address` |
 | `GMAIL_APP_PASSWORD` | (required, sensitive) | passed from `var.gmail_app_password` |
@@ -110,7 +110,7 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 |---|---|---|
 | `0.1` | Capture fps on Pi (frame every 10 s) | `pi_codes/frame_extractor.py:13` |
 | `0.35` | Judge inference conf threshold (in container) | `judge/main.py:16` |
-| `0.20` | Alert-manager conf threshold | `variables.tf:23`, `alert-manager/main.py:16` |
+| `0.35` | Conf threshold for both judge and alert-manager | `variables.tf:23`, `judge/main.py:16`, `alert-manager/main.py:16` |
 | `2` | Streak filter (frames required) | `judge/main.py:19` |
 | `300` | Email cooldown seconds | `alert-manager/main.py:17` |
 | `60` | Local-test cooldown seconds | `local_alert_handler.py:19` |
@@ -181,7 +181,7 @@ Things `README.MD` / `documentation.md` / `CLAUDE.md` get wrong, source-of-truth
 - **Cooldown granularity**: CLAUDE.md says per-camera, 60s; production uses single global key `global_email`, 300s (`alert-manager/main.py:17, 110`).
 - **frame-extractor location**: docs imply Cloud Run; in current deployment the Pi runs `pi_codes/frame_extractor.py`. The Cloud Run image exists but isn't deployed.
 - **budget-notifier code**: `services/budget-notifier/main.py` (FCM-based) is dead code. Terraform deploys `services/alert-manager/` for both functions with different entry points.
-- **Confidence threshold**: README says 0.35; Terraform var default is 0.20. Effective value depends on what's passed to `gcloud ai models upload` for the judge — usually 0.35, but the alert-manager has 0.20 and they're independent filters.
+- **Confidence threshold**: README says 0.35; Terraform var default is now 0.35 (was 0.20 — fixed). Judge is explicitly set to 0.35 via `gcloud ai models upload --container-env-vars`. Alert-manager inherits 0.35 from the Terraform variable. Both thresholds are in sync.
 - **Class count**: README says 10 in one place; the actual class count is **9** (see list above).
 - **`firebase-admin` in alert-manager requirements.txt**: imported only in the dead `budget-notifier/main.py`; the deployed `alert-manager/main.py` doesn't use it. Removing it from requirements.txt would shrink the cold start.
 
