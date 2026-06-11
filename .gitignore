@@ -49,3 +49,6 @@ firebase-debug.log
 *.zip*.log
 *.zip
 dataset/
+
+# pytest coverage data
+.coverage

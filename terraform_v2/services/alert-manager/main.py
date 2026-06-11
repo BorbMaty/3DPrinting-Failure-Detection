@@ -13,7 +13,7 @@ from google.cloud import firestore
 # ── Config ────────────────────────────────────────────────────────────────────
 PROJECT_ID           = os.environ.get("GCP_PROJECT", "printermonitor-488112")
 FIRESTORE_COLLECTION = os.environ.get("FIRESTORE_COLLECTION", "alerts")
-CONF_THRESHOLD       = float(os.environ.get("CONF_THRESHOLD", "0.20"))
+CONF_THRESHOLD       = float(os.environ.get("CONF_THRESHOLD", "0.35"))
 COOLDOWN_SECONDS     = int(os.environ.get("COOLDOWN_SECONDS", "300"))
 
 GMAIL_ADDRESS      = os.environ["GMAIL_ADDRESS"]
@@ -55,8 +55,8 @@ def set_cooldown(key: str):
 
 
 # ── Email helper ──────────────────────────────────────────────────────────────
-def send_email(subject: str, body_html: str):
-    """Send an email from and to the same Gmail address."""
+def send_email(subject: str, body_html: str) -> bool:
+    """Send an email from and to the same Gmail address. Returns True on success."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = GMAIL_ADDRESS
@@ -68,8 +68,10 @@ def send_email(subject: str, body_html: str):
             server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
             server.sendmail(GMAIL_ADDRESS, GMAIL_ADDRESS, msg.as_string())
         print(f"Email sent: {subject}", flush=True)
+        return True
     except Exception as e:
         print(f"Email error: {e}", flush=True)
+        return False
 
 
 # ── Defect detection handler ──────────────────────────────────────────────────
@@ -130,8 +132,10 @@ def handle_detection(cloud_event):
         </table>
         <p><a href="https://printermonitor-488112.web.app">Open Dashboard</a></p>
         """
-        send_email(f"🚨 Printer Alert — {camera_id}", body)
-        set_cooldown("global_email")
+        # Only start the cooldown if the email actually went out, so an SMTP
+        # hiccup doesn't buy 5 minutes of silence on a genuine failure
+        if send_email(f"🚨 Printer Alert — {camera_id}", body):
+            set_cooldown("global_email")
 
 
 # ── Budget alert handler ──────────────────────────────────────────────────────
@@ -165,5 +169,5 @@ def handle_budget_alert(cloud_event):
         <b>Spent:</b> ${budget_amount:.2f}<br>
         <b>Threshold:</b> ${budget_threshold:.2f}</p>
         """
-        send_email(f"💸 GCP Budget Alert — {budget_name}", body)
-        set_cooldown("budget")
+        if send_email(f"💸 GCP Budget Alert — {budget_name}", body):
+            set_cooldown("budget")

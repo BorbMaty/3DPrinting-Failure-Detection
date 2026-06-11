@@ -156,6 +156,15 @@ class TestSendEmail:
         with patch("smtplib.SMTP_SSL", side_effect=Exception("connection refused")):
             am.send_email("Subject", "<p>body</p>")
 
+    def test_returns_true_on_success(self):
+        with patch("smtplib.SMTP_SSL") as mock_ssl:
+            mock_ssl.return_value.__enter__.return_value = MagicMock()
+            assert am.send_email("Subject", "<p>body</p>") is True
+
+    def test_returns_false_on_smtp_error(self):
+        with patch("smtplib.SMTP_SSL", side_effect=Exception("connection refused")):
+            assert am.send_email("Subject", "<p>body</p>") is False
+
 
 # ── handle_detection ──────────────────────────────────────────────────────────
 
@@ -247,6 +256,18 @@ class TestHandleDetection:
             am.handle_detection(event)
 
         mock_set_cd.assert_called_once_with("global_email")
+
+    def test_no_cooldown_when_email_fails(self):
+        event = _make_cloud_event({
+            "camera_id": "cam1", "ts": "2026-01-01T00:00:00+00:00", "seq": 7,
+            "detections": [{"label": "layer_shift", "confidence": 0.80}],
+        })
+        with patch.object(am, "send_email", return_value=False), \
+             patch.object(am, "is_on_cooldown", return_value=False), \
+             patch.object(am, "set_cooldown") as mock_set_cd:
+            am.handle_detection(event)
+
+        mock_set_cd.assert_not_called()
 
     def test_all_high_sev_labels_trigger_email(self):
         for label in ("spagetti", "not_sticking", "layer_shift", "warping"):

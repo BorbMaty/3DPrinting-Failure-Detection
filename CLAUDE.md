@@ -131,8 +131,9 @@ Raspberry Pi (3 USB cameras)
                     Judge on Vertex AI (YOLOv8x, T4 GPU)
                           ↓ (publishes)
                     Pub/Sub: detections-out
-                      ├─ (Eventarc) Alert Manager CF → Firestore + Gmail + FCM
-                      └─ (Eventarc) Budget Notifier CF → Firestore + FCM
+                      └─ (Eventarc) Alert Manager CF → Firestore + Gmail
+                    Pub/Sub: budget-notifications
+                      └─ (Eventarc) Budget Notifier CF → Firestore + Gmail
                     Firestore (onSnapshot) → Dashboard live updates
 ```
 
@@ -140,12 +141,17 @@ Raspberry Pi (3 USB cameras)
 
 | Service | Type | Trigger | Key Logic |
 |---|---|---|---|
-| **frame-extractor** | Cloud Run container | Manual | OpenCV frame capture → base64 → Pub/Sub `frames-in` |
+| **frame-extractor** | Python script on the Raspberry Pi (`pi_codes/frame_extractor.py` is a symlink to the canonical `terraform_v2/services/frame-extractor/main.py`) | Continuous | Reader thread keeps only the newest RTSP frame (honest `ts` at grab time) → base64 → Pub/Sub `frames-in`; honors the dashboard Capture ON/OFF toggle via Firestore `system_state/extraction` |
 | **dispatcher** | Cloud Function (Gen2) | Eventarc `frames-in` | Auth token management → HTTP POST to Vertex AI endpoint |
-| **judge** | Vertex AI container (PyTorch 2.2 + CUDA 12.1) | HTTP POST `/predict` | YOLOv8x inference → Pub/Sub `detections-out`; health at `/healthz` |
-| **alert-manager** | Cloud Function (Gen2) | Eventarc `detections-out` | Email cooldown (single global 300s lock), Firestore writes, FCM push |
-| **budget-notifier** | Cloud Function (Gen2) | Eventarc `budget-notifications` | Firestore write + FCM push |
+| **judge** | Vertex AI container (PyTorch 2.2 + CUDA 12.1) | HTTP POST `/predict` | YOLOv8x inference → Pub/Sub `detections-out`; health at `/healthz`; streak counters are in-process → endpoint must stay at min=max=1 replica |
+| **alert-manager** | Cloud Function (Gen2) | Eventarc `detections-out` | Email cooldown (single global 300s lock, only set on successful send), Firestore writes |
+| **budget-notifier** | Cloud Function (Gen2, built from `services/alert-manager/`) | Eventarc `budget-notifications` | Firestore write + Gmail email |
 | **mediamtx** | Raspberry Pi container | - | RTSP in → WebRTC WHEP out on port 8889 |
+
+Alerting is **email-only** — FCM push notifications were removed deliberately
+(commit `06b7a01`). The dashboard's page-1 overlays show *recent confirmed
+detections* (≈20–40 s behind the live video), not frame-synced boxes; page 2
+(Inference log) draws boxes on the exact frames the judge processed.
 
 ### Detection Classes & Severity
 

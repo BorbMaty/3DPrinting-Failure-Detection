@@ -56,10 +56,6 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "logging.googleapis.com",
     "billingbudgets.googleapis.com",
-    # Required for FCM web push token registration (fixes messaging/token-subscribe-failed)
-    "firebaseinstallations.googleapis.com",
-    "fcm.googleapis.com",
-    "fcmregistrations.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -232,14 +228,6 @@ resource "google_project_iam_member" "alert_manager_firestore" {
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_service_account.alert_manager.email}"
 }
-
-# Required for firebase_admin.messaging.send() to authenticate with FCM
-resource "google_project_iam_member" "alert_manager_firebase_admin" {
-  project = var.project_id
-  role    = "roles/firebase.admin"
-  member  = "serviceAccount:${google_service_account.alert_manager.email}"
-}
-
 
 resource "google_project_iam_member" "alert_manager_eventarc" {
   project = var.project_id
@@ -759,7 +747,8 @@ resource "google_monitoring_alert_policy" "pubsub_backlog" {
   # descriptor exists from the moment the subscription is created.
   # oldest_undelivered_message_age is only registered after the first backlog
   # occurs, causing API 404s on fresh projects.
-  # At 0.1 FPS × 3 cameras = 0.3 msg/s: >20 undelivered for 5 min = real stall.
+  # At the extractor default CAPTURE_FPS=0.1 × 3 cameras = 0.3 msg/s:
+  # >20 undelivered for 5 min = real stall. Retune if CAPTURE_FPS changes.
   conditions {
     display_name = "dispatcher: undelivered messages > 20 for 5 min"
     condition_threshold {

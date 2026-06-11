@@ -15,7 +15,7 @@ PROJECT_ID        = os.environ["GCP_PROJECT"]
 DETECTIONS_TOPIC  = os.environ["DETECTIONS_TOPIC"]
 MODEL_PATH        = os.environ.get("MODEL_PATH", "/app/best.pt")
 CONF_THRESHOLD    = float(os.environ.get("CONF_THRESHOLD", "0.35"))
-STREAK_REQUIRED   = int(os.environ.get("STREAK_REQUIRED", "2"))
+STREAK_REQUIRED   = int(os.environ.get("STREAK_REQUIRED", "3"))
 FRAMES_BUCKET     = os.environ.get("FRAMES_BUCKET", "")
 JPEG_QUALITY      = int(os.environ.get("JPEG_QUALITY", "60"))
 
@@ -35,6 +35,9 @@ def _get_gcs() -> gcs_lib.Client | None:
     return _gcs_client
 
 # Per-camera streak counters: {camera_id: {label: consecutive_frame_count}}
+# In-process state: requires min=max=1 replica on the Vertex endpoint. With
+# multiple replicas, requests alternate between processes and every streak is
+# undercounted; a redeploy/restart also resets counters mid-confirmation.
 _streaks: dict[str, dict[str, int]] = {}
 
 

@@ -9,8 +9,19 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+    match /budget_alerts/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // Capture kill switch: world-readable so the dashboard can show state,
+    // but only the operator (Google sign-in) may flip it. The Pi reads via
+    // the Admin SDK, which bypasses these rules.
     match /system_state/{doc} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'ether.scythe.blade@gmail.com'
+                   && request.resource.data.keys().hasOnly(['enabled'])
+                   && request.resource.data.enabled is bool;
     }
   }
 }
