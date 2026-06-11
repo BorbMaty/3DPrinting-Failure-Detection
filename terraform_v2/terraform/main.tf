@@ -229,6 +229,9 @@ resource "google_project_iam_member" "alert_manager_firestore" {
   member  = "serviceAccount:${google_service_account.alert_manager.email}"
 }
 
+# roles/firebase.admin (formerly used by FCM) was revoked manually on
+# 2026-06-11 — the CI service account cannot edit project-level IAM policy.
+
 resource "google_project_iam_member" "alert_manager_eventarc" {
   project = var.project_id
   role    = "roles/eventarc.eventReceiver"
