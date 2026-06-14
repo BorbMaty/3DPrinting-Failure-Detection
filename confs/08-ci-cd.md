@@ -138,23 +138,30 @@ Hooks pinned with `default_language_version.python: "3.10"`. The pytest hook use
 
 ## CI dependency graph
 
-```
-PR opened
-  ├── python-tests.yml    (if services or tests touched)
-  ├── docker-judge.yml    (if judge service touched, no push)
-  ├── compileLatex.yml    (if docs/latex touched)
-  └── terraform.yml
-       ├── lint  ┐
-       │        ├── plan ── PR comment
-       └── checkov ┘
+```mermaid
+flowchart TB
+    subgraph PRO["PR opened"]
+        PR_PT["python-tests.yml<br/>(if services or tests touched)"]
+        PR_DJ["docker-judge.yml<br/>(if judge service touched · no push)"]
+        PR_CL["compileLatex.yml<br/>(if docs/latex touched)"]
+        PR_LINT["terraform.yml: lint"]
+        PR_CHK["terraform.yml: checkov"]
+        PR_PLAN["terraform.yml: plan → PR comment"]
+        PR_LINT --> PR_PLAN
+        PR_CHK --> PR_PLAN
+    end
 
-Merge to main
-  ├── python-tests.yml
-  ├── docker-judge.yml        → push :sha + :latest
-  ├── firebase-deploy.yml     → deploy hosting + Firestore rules  (if dashboard/ or rules touched)
-  ├── compileLatex.yml        → commit compiled PDF back
-  └── terraform.yml
-       └── apply (uses tfplan artifact from plan job)
+    subgraph MAIN["Merge to main"]
+        M_PT["python-tests.yml"]
+        M_DJ["docker-judge.yml → push :sha + :latest"]
+        M_FB["firebase-deploy.yml → deploy hosting + Firestore rules<br/>(if dashboard/ or rules touched)"]
+        M_CL["compileLatex.yml → commit compiled PDF back"]
+        M_PLAN["terraform.yml: plan"]
+        M_APPLY["terraform.yml: apply<br/>(uses tfplan artifact from plan job)"]
+        M_PLAN --> M_APPLY
+    end
+
+    PRO -. "merge" .-> MAIN
 ```
 
 Note that `compileLatex.yml` will fail with permission denied if `secrets.EMAIL` / `secrets.FULL_NAME` aren't set; it's a thesis-only convenience.

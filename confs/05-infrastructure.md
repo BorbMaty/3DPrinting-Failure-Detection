@@ -49,6 +49,8 @@ The last three are required for Web Push token registration — without them you
 ### Storage
 - `google_storage_bucket.models` — `printermonitor-488112-models` (regional, uniform-bucket-level-access, public-access-prevention=`enforced`, versioning **on**, `force_destroy=false`). Holds `yolov8x/best.pt`.
 - `google_storage_bucket.functions_source` — `printermonitor-488112-functions-source`. Holds the zipped Cloud Function source. `force_destroy=true` (safe — content is regenerable).
+- `google_storage_bucket.frames` — **`printermonitor-488112-frames`** (`main.tf:76`). **Public-read** inference-frame store: the judge writes one JPEG per inference here and the dashboard's [[06-dashboard|Inference log]] renders them. `public-access-prevention` is *not* enforced — `google_storage_bucket_iam_member.frames_public_read` grants `roles/storage.objectViewer` to `allUsers` (checkov `CKV_GCP_28` is explicitly skipped, "frames are non-sensitive"). Write access: `frames_judge_svc_write` (the `judge-svc` runtime SA) and `frames_compute_sa_write` (default compute SA fallback, mirroring the detections-out publisher fallback).
+  > **No lifecycle rule** — objects accumulate forever (one per inference, every frame). A future TTL/lifecycle policy would cap storage; see [[feedback]].
 
 ### Artifact Registry
 - `google_artifact_registry_repository.printermonitor` — Docker repo at `europe-west1-docker.pkg.dev/printermonitor-488112/printermonitor/`. Two images live here: `judge` (built by CI) and conceptually `frame-extractor` / `mediamtx` if you ever deploy them.
@@ -79,13 +81,19 @@ IAM: the Pub/Sub service agent (`service-{N}@gcp-sa-pubsub.iam`) is granted `pub
 ### Firestore
 - `google_firestore_database.default` — name `(default)`, location `eur3` (multi-region Europe), type `FIRESTORE_NATIVE`. **`prevent_destroy = true`** and `ignore_changes = all`. Once created, Terraform leaves it alone.
 - Index: `alerts (camera_id ASC, timestamp DESC)`. This is what the dashboard query relies on (it orders by `created_at` though — the index is essentially unused at present; legacy).
-- Three collections used at runtime (not declared in Terraform, created on first write): `alerts`, `alert_cooldowns`, `budget_alerts`.
+- Collections used at runtime (not declared in Terraform, created on first write):
+  - `inferences` — **one doc per inference** (every frame the judge processed, incl. zero-detection). Written by `handle_detection`. Drives the dashboard inference log + frame tiles. Public-read, write-denied via `firestore.rules`.
+  - `alerts` — confidence-filtered subset (defects only). Public-read, write-denied.
+  - `alert_cooldowns` — email cooldown locks (`global_email`, `budget`). Not in `firestore.rules` (server-only access path).
+  - `budget_alerts` — budget alert audit log.
+  - `system_state` — single doc `extraction` with field `enabled` (the [[03-pi-edge#Remote capture kill-switch|capture kill-switch]]). **`firestore.rules` allows public read+write** so the unauthenticated dashboard can toggle it.
+- **`firestore.rules`** (deployed via `firebase-deploy.yml`): `alerts` & `inferences` → `read: true, write: false`; `system_state` → `read, write: true`.
 
 ### Service Accounts
 - `sa-frame-extractor` — runs on the Pi
 - `sa-alert-manager` — runs the AlertManager CF and the BudgetNotifier CF
 - `sa-dispatcher` — runs the Dispatcher CF
-- `judge-svc` — **manually created** (not in Terraform). Required for the Vertex AI custom container to publish to Pub/Sub. The `gcloud ai endpoints deploy-model --service-account=judge-svc@...` flag passes it in.
+- `judge-svc` — **manually created** (not in Terraform). Required for the Vertex AI custom container to publish to Pub/Sub **and** to write objects into the `*-frames` bucket. The `gcloud ai endpoints deploy-model --service-account=judge-svc@...` flag passes it in. Terraform references it by email in `google_storage_bucket_iam_member.frames_judge_svc_write` and `google_pubsub_topic_iam_member.vertex_ai_detections_publisher`, so it must exist before `terraform apply`.
 
 ### Cloud Functions (Gen2)
 

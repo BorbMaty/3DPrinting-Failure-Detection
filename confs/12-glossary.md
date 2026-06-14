@@ -54,11 +54,15 @@ Retention: `frames-in` and `detections-out` are 1 hr; `budget-notifications` use
 
 ## Firestore collections
 
-| Collection | Schema (per document) | Written by |
-|---|---|---|
-| `alerts` | `{ camera_id, detections: [...], timestamp, seq, created_at: SERVER_TIMESTAMP }` | `handle_detection` in alert-manager |
-| `alert_cooldowns` | doc id is the cooldown key (`global_email` or `budget`); body `{ last_sent: ISO timestamp }` | `set_cooldown` in alert-manager |
-| `budget_alerts` | `{ budget_name, cost_amount, threshold, created_at: SERVER_TIMESTAMP }` | `handle_budget_alert` in alert-manager |
+| Collection | Schema (per document) | Written by | Read by |
+|---|---|---|---|
+| `inferences` | `{ camera_id, detections: [...], timestamp, seq, frame_url, created_at: SERVER_TIMESTAMP }` | `handle_detection` (every frame, incl. 0 detections) | dashboard page 2 (`limit(100)`); public-read |
+| `alerts` | `{ camera_id, detections: [...], timestamp, seq, created_at: SERVER_TIMESTAMP }` | `handle_detection` (conf ≥ threshold only) | dashboard page 1 (`limit(50)`); public-read |
+| `alert_cooldowns` | doc id is the cooldown key (`global_email` or `budget`); body `{ last_sent: ISO timestamp }` | `set_cooldown` in alert-manager | alert-manager only |
+| `budget_alerts` | `{ budget_name, cost_amount, threshold, created_at: SERVER_TIMESTAMP }` | `handle_budget_alert` in alert-manager | — |
+| `system_state` | doc `extraction` = `{ enabled: bool }` | dashboard capture toggle (`setDoc`) | Pi `frame_extractor.py` (polled, 5 s cache); public read+write |
+
+`firestore.rules`: `alerts` & `inferences` are `read:true, write:false`; `system_state` is `read,write:true`; the rest have no public rule.
 
 Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashboard actually queries by `created_at` and doesn't use this index.
 
@@ -70,12 +74,14 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 | `GCP_PROJECT` | `printermonitor-488112` | |
 | `FRAMES_TOPIC` (Cloud Run) / `PUBSUB_TOPIC` (Pi) | `frames-in` | |
 | `CAPTURE_FPS` | `2` (Cloud Run) / `0.1` (Pi) | Pi runs intentionally slower |
-| `JPEG_QUALITY` | `70` | |
+| `JPEG_QUALITY` | `70` (Cloud Run) / **`100` (Pi)** | Pi bumped to 100 for sharper inference-log thumbnails |
 | `FRAME_WIDTH` / `FRAME_HEIGHT` | `1280` / `720` | resize cap, not target |
 | `RTSP_URLS` / `RTSP_URL` (Cloud Run) | (required) | comma-separated |
 | `CAMERA_IDS` (Cloud Run) | `cam1,cam2,cam3` | pads with `camN` if shorter than URLs |
 | `PORT` | `8080` | health server |
-| `GOOGLE_APPLICATION_CREDENTIALS` | (Pi only) | path to SA key file |
+| `GOOGLE_APPLICATION_CREDENTIALS` | (Pi only) | path to SA key file (now also needs Firestore read for the capture toggle) |
+
+> The Pi extractor also reads Firestore `system_state/extraction.enabled` (no env var — hard-coded collection/doc) to pause/resume capture.
 
 ### `dispatcher`
 | Var | Default | Notes |
@@ -83,6 +89,7 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 | `GCP_PROJECT` | `printermonitor-488112` | |
 | `VERTEX_ENDPOINT_ID` | (required) | from Terraform `var.vertex_endpoint_id` |
 | `VERTEX_REGION` | `europe-west1` | |
+| `MAX_FRAME_AGE_S` | `5` | drop frames whose `ts` is older than this (backlog staleness filter) |
 
 ### `judge`
 | Var | Default | Notes |
@@ -91,7 +98,9 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 | `DETECTIONS_TOPIC` | (required) | usually `detections-out` |
 | `MODEL_PATH` | `/app/best.pt` | baked into image |
 | `CONF_THRESHOLD` | `0.35` (code) / set via `gcloud ai models upload --container-env-vars` | |
-| `STREAK_REQUIRED` | `2` | consecutive frames before publish |
+| `STREAK_REQUIRED` | `2` | consecutive frames before a detection is "confirmed" |
+| `FRAMES_BUCKET` | `""` (code) / `printermonitor-488112-frames` (deployed) | enables per-inference JPEG upload + `frame_url`; empty = upload skipped |
+| `JPEG_QUALITY` | `60` | quality of the uploaded inference JPEG |
 | `PORT` | `8080` | |
 
 ### `alert-manager` (and `budget-notifier`, same source)
@@ -99,7 +108,7 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 |---|---|---|
 | `GCP_PROJECT` | `printermonitor-488112` | |
 | `FIRESTORE_COLLECTION` | `alerts` | |
-| `CONF_THRESHOLD` | `0.35` (Terraform var default) / `0.35` (code default) | |
+| `CONF_THRESHOLD` | **`0.20` (code default)** / `0.35` (Terraform var, injected into the alert-manager fn env) | budget-notifier fn does **not** set it (doesn't use it) |
 | `COOLDOWN_SECONDS` | `300` | 5 min |
 | `GMAIL_ADDRESS` | (required, sensitive) | passed from `var.gmail_address` |
 | `GMAIL_APP_PASSWORD` | (required, sensitive) | passed from `var.gmail_app_password` |
@@ -108,19 +117,23 @@ Index: `alerts (camera_id ASC, timestamp DESC)` defined in Terraform; the dashbo
 
 | Number | Meaning | Source |
 |---|---|---|
-| `0.1` | Capture fps on Pi (frame every 10 s) | `pi_codes/frame_extractor.py:13` |
-| `0.35` | Judge inference conf threshold (in container) | `judge/main.py:16` |
-| `0.35` | Conf threshold for both judge and alert-manager | `variables.tf:23`, `judge/main.py:16`, `alert-manager/main.py:16` |
-| `2` | Streak filter (frames required) | `judge/main.py:19` |
+| `0.1` | Capture fps on Pi (frame every 10 s) | `pi_codes/frame_extractor.py:14` |
+| `0.35` | Judge inference conf threshold (in container) | `judge/main.py:17` |
+| `0.35` | Conf threshold (judge env + Terraform var). **alert-manager *code* default is `0.20`**, overridden to `0.35` by Terraform | `variables.tf:23`, `judge/main.py:17`, `alert-manager/main.py:16` |
+| `2` | Streak filter (frames required to "confirm") | `judge/main.py:18` |
+| `5` | Dispatcher staleness drop (`MAX_FRAME_AGE_S`, seconds) | `dispatcher/main.py:21` |
 | `300` | Email cooldown seconds | `alert-manager/main.py:17` |
 | `60` | Local-test cooldown seconds | `local_alert_handler.py:19` |
 | `5` | Budget threshold ($/month) | manual GCP Console |
 | `~$37` | Daily cost of deployed T4 GPU | observed |
 | `8554/8080/8888/8889/8890` | MediaMTX ports (RTSP/RTMP/HLS/WebRTC/SRT) | `mediamtx.yml` |
 | `1280 × 720` | Default frame size cap | env defaults |
-| `70` | JPEG quality | env defaults |
-| `10_000` | Dashboard bbox TTL (ms, clear stale overlays) | `dashboard/index.html:272` |
-| `50` | Dashboard event log limit (Firestore query) | `dashboard/index.html:450` |
+| `100` | Pi JPEG quality (was 70) | `pi_codes/frame_extractor.py:15` |
+| `60` | Judge uploaded-frame JPEG quality | `judge/main.py:20` |
+| `100` | Inference-log query limit (page 2) | `dashboard/index.html:1086` |
+| `5.0` | Capture kill-switch poll cache (seconds) | `pi_codes/frame_extractor.py:44` |
+| `10_000` | Dashboard bbox TTL (ms, clear stale overlays) | `dashboard/index.html` (`DETECTION_TTL_MS`) |
+| `50` | Dashboard event log limit (`alerts` query, page 1) | `dashboard/index.html:1021` |
 | `90` | Test coverage gate (percent) | `python-tests.yml`, `.pre-commit-config.yaml` |
 
 ## Detection class labels (exact spelling)
@@ -176,13 +189,22 @@ Source of truth: `scripts/annotate.py:20-30` `CLASS_NAMES` (must match the YOLO 
 
 Things `README.MD` / `documentation.md` / `CLAUDE.md` get wrong, source-of-truth in parens:
 
-- **Class spelling**: docs say "spaghetti"; model uses `spagetti` (source: `annotate.py`, `alert-manager/main.py:23`).
-- **Streak threshold**: CLAUDE.md says 3; judge defaults to 2 (`judge/main.py:19`).
-- **Cooldown granularity**: CLAUDE.md says per-camera, 60s; production uses single global key `global_email`, 300s (`alert-manager/main.py:17, 110`).
+- **Class spelling**: docs say "spaghetti"; model uses `spagetti` (source: `annotate.py`, `alert-manager/main.py:22`).
+- **Streak threshold**: CLAUDE.md says 3; judge defaults to 2 (`judge/main.py:18`).
+- **Cooldown granularity**: CLAUDE.md says per-camera, 60s; production uses single global key `global_email`, 300s (`alert-manager/main.py:17, 118`).
 - **frame-extractor location**: docs imply Cloud Run; in current deployment the Pi runs `pi_codes/frame_extractor.py`. The Cloud Run image exists but isn't deployed.
 - **budget-notifier code**: `services/budget-notifier/main.py` (FCM-based) is dead code. Terraform deploys `services/alert-manager/` for both functions with different entry points.
-- **Confidence threshold**: README says 0.35; Terraform var default is now 0.35 (was 0.20 — fixed). Judge is explicitly set to 0.35 via `gcloud ai models upload --container-env-vars`. Alert-manager inherits 0.35 from the Terraform variable. Both thresholds are in sync.
+- **Confidence threshold**: judge is explicitly set to 0.35 via `gcloud ai models upload --container-env-vars`; Terraform var default is 0.35; **alert-manager's *code* default is `0.20`** (`alert-manager/main.py:16`) but the deployed function gets `0.35` from the Terraform-injected env. Effective production value: 0.35 everywhere. (The old glossary text claiming the alert-manager code default was 0.35 was wrong.)
 - **Class count**: README says 10 in one place; the actual class count is **9** (see list above).
 - **`firebase-admin` in alert-manager requirements.txt**: imported only in the dead `budget-notifier/main.py`; the deployed `alert-manager/main.py` doesn't use it. Removing it from requirements.txt would shrink the cold start.
 
-When in doubt, trust the code in `terraform_v2/services/`, not the markdown files at the repo root.
+### New in the current build (was not in older docs)
+- **Judge always publishes** — every inference (incl. zero detections) goes to `detections-out`, not just defect frames (`judge/main.py:159-161`).
+- **`inferences` collection** — alert-manager logs every inference; `alerts` is the conf-filtered subset (`alert-manager/main.py:93-114`).
+- **GCS frame upload + `frame_url`** — judge writes a JPEG per inference to the public `*-frames` bucket (`judge/main.py:55-67`).
+- **Dispatcher staleness + 404/503 drop** — `MAX_FRAME_AGE_S=5`, and endpoint-not-ready frames are dropped not retried (`dispatcher/main.py:21, 59-66, 88-94`).
+- **Pi capture kill-switch** — `system_state/extraction.enabled` polled by the Pi, toggled from the dashboard (`pi_codes/frame_extractor.py:40-52`).
+- **Permanent Cloudflare host** — `cam.printermonitor.app` (dashboard fallback `index.html:739`); the old ephemeral `*.trycloudflare.com` fallback is gone.
+- **Dashboard is two pages** — Live streams + Inference log (`dashboard/index.html:518-521`).
+
+When in doubt, trust the code in `terraform_v2/services/` and `pi_codes/`, not the markdown files at the repo root.

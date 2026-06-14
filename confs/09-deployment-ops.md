@@ -113,7 +113,11 @@ T4 cost: **≈ $37 / day** ([[11-costs-and-monitoring]]). **Always undeploy afte
 
 ## Purge `frames-in` backlog
 
-If the judge is undeployed while the Pi is publishing, `frames-in` accumulates frames. When the judge comes back up, the dispatcher tries to push hundreds at once — the judge OOMs or throttles, and the queue grows further. The fix is to **seek the subscription past the backlog** so the queued messages are acked without delivery.
+> **Mostly automatic now.** The dispatcher drops frames older than `MAX_FRAME_AGE_S` (5 s) and drops on HTTP 404/503 (endpoint not ready) instead of retrying ([[02-cloud-services#Dispatcher]]). So a freshly-redeployed judge is no longer slammed by a stale queue — the backlog is acked-and-discarded as it's read. The manual seek below is now a **backstop** for an unusually large backlog, not a routine step.
+>
+> **Cleaner still:** flip the [[03-pi-edge#Remote capture kill-switch|capture kill-switch]] OFF from the dashboard ("Capture: OFF") before undeploying the judge. The Pi stops publishing, so no backlog forms at all. Turn it back ON after redeploying.
+
+If the judge is undeployed while the Pi is publishing (and the capture toggle is left ON), `frames-in` accumulates frames. The dispatcher's staleness filter handles small backlogs automatically, but for a very large one you can still **seek the subscription past the backlog** so the queued messages are acked without delivery.
 
 The Eventarc-managed subscription for the dispatcher has a generated name like `eventarc-europe-west1-dispatcher-635712-sub-152` (the suffix varies). To find the exact name:
 
@@ -137,26 +141,32 @@ This is a one-time skip; new messages flow normally afterwards.
 
 ## Flush Firestore
 
-`scripts/flush_firestore.py`. Targets three collections:
+`scripts/flush_firestore.py`. Targets **four** collections (`COLLECTIONS` map, `scripts/flush_firestore.py:11-16`):
 
 | Key | Collection | Why flush |
 |---|---|---|
 | `alerts` | `alerts` | Stale test data clutters the dashboard event log |
 | `cooldowns` | `alert_cooldowns` | Email suppressed for 5 min — flush to re-fire immediately |
 | `budget_alerts` | `budget_alerts` | Test budget pushes you don't want in history |
+| `inferences` | `inferences` | Per-frame audit docs pile up fast (every frame, not just defects) — flush to keep the inference-log page and storage tidy |
+
+> Note: this does **not** delete the JPEGs in the `*-frames` GCS bucket. Those are separate and have no lifecycle rule — `gsutil -m rm 'gs://printermonitor-488112-frames/frames/**'` to clear them manually.
 
 ```bash
-# Flush all three
+# Flush all four
 python scripts/flush_firestore.py
 
 # Only cooldowns
 python scripts/flush_firestore.py --collections cooldowns
 
+# Only the inference audit trail
+python scripts/flush_firestore.py --collections inferences
+
 # Non-interactive
 python scripts/flush_firestore.py --yes
 ```
 
-Requires `gcloud auth application-default login` first so the script can pick up ADC. Batches deletes 100 docs at a time (`scripts/flush_firestore.py:18`).
+Requires `gcloud auth application-default login` first so the script can pick up ADC. Batches deletes 100 docs at a time (`scripts/flush_firestore.py:19`).
 
 ---
 

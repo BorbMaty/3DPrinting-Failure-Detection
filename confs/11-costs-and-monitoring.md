@@ -18,6 +18,7 @@ type: ops
 | Pub/Sub (3 topics, low traffic) | Per byte + ops | ~$0.01 / month |
 | Firestore | Per read/write + storage | ~$0.10 / month |
 | Cloud Storage (state + sources + model bucket) | Per GB-month | ~$0.02 / month |
+| Cloud Storage (`*-frames` inference JPEGs) | Per GB-month — **grows unbounded** (1 JPEG/inference, no lifecycle rule) | ~pennies now, will creep up; see below |
 | Artifact Registry | Per GB-month | ~$0.05 / month |
 | Eventarc | Per event | ~$0.01 / month |
 | Firebase Hosting | Free tier covers it | $0 |
@@ -41,12 +42,16 @@ Alternatives that were considered:
 
 ## Budget alert pipeline
 
-```
-GCP Cloud Billing budget ($5 monthly cap)
-  └─ Pub/Sub topic: budget-notifications
-     └─ Eventarc → Cloud Function: budget-notifier
-          ├─ Firestore: budget_alerts (audit log)
-          └─ Gmail SMTP (cooldown key: "budget", same 5-min TTL)
+```mermaid
+flowchart TB
+    BUD["GCP Cloud Billing budget<br/>($5 monthly cap)"]
+    PS["Pub/Sub topic: budget-notifications"]
+    BN["Cloud Function: budget-notifier"]
+    FS["Firestore: budget_alerts (audit log)"]
+    MAIL["Gmail SMTP<br/>(cooldown key 'budget', 5-min TTL)"]
+    BUD --> PS -- Eventarc --> BN
+    BN --> FS
+    BN --> MAIL
 ```
 
 The budget itself is **not Terraform-managed** (the CI service account lacks `billingAccounts.budgets` perms). See [[05-infrastructure#Resources NOT managed by Terraform]] and `main.tf:321-323` for the comment that documents this.

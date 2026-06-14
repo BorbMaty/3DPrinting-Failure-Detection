@@ -85,7 +85,9 @@ Each detection has both representations:
 }
 ```
 
-The dashboard prefers the normalized form (`dashboard/index.html:357-360`) — it scales by `canvas.width/height` which always matches the live video element. The pixel `bbox` is kept for debugging and for any future client that wants source-resolution rendering.
+The dashboard prefers the normalized form — on page 1 it scales by `canvas.width/height` over the live video; on page 2 it draws an SVG overlay sized to the uploaded frame's natural dimensions (`drawBoxesSvg`). The pixel `bbox` is kept for debugging and for any future client that wants source-resolution rendering.
+
+> Each published inference also carries a top-level **`frame_url`** (not per-detection) — the public GCS URL of the JPEG the judge uploaded for that frame. The dashboard's [[06-dashboard|Inference log]] renders the actual image with the bboxes drawn over it, rather than reconstructing the scene from coordinates alone. See [[02-cloud-services#Judge]] step 6.
 
 ## Dataset
 
