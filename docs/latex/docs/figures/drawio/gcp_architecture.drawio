@@ -1,90 +1,109 @@
-<mxfile host="app.diagrams.net" modified="2026-04-06" version="21.0.0">
+<mxfile host="app.diagrams.net" modified="2026-06-14" version="21.0.0">
   <diagram name="System Architecture" id="system-arch">
-    <mxGraphModel dx="900" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="585" math="0" shadow="0">
+    <mxGraphModel dx="900" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="746" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <mxCell id="sa-title" value="System Architecture — Edge + Google Cloud" style="text;html=1;align=center;verticalAlign=middle;fontSize=15;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="120" y="10" width="600" height="25" as="geometry" />
+          <mxGeometry x="160" y="10" width="600" height="25" as="geometry" />
         </mxCell>
 
         <!-- EDGE LANE -->
         <mxCell id="pi-swim" value="Edge — Raspberry Pi 4B" style="swimlane;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;startSize=26;rounded=1;" vertex="1" parent="1">
-          <mxGeometry x="20" y="50" width="200" height="510" as="geometry" />
+          <mxGeometry x="20" y="50" width="220" height="640" as="geometry" />
         </mxCell>
-        <mxCell id="pi-cams" value="USB Cameras (x3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="pi-swim">
-          <mxGeometry x="30" y="45" width="140" height="45" as="geometry" />
+        <mxCell id="pi-cams" value="USB Cameras (x3)&#xa;by-id /dev paths" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="pi-swim">
+          <mxGeometry x="40" y="40" width="140" height="44" as="geometry" />
         </mxCell>
-        <mxCell id="pi-mtx" value="MediaMTX&#xa;(RTSP / WebRTC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="pi-swim">
-          <mxGeometry x="30" y="115" width="140" height="50" as="geometry" />
+        <mxCell id="pi-gst" value="GStreamer&#xa;start_3cams_rtsp.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="pi-swim">
+          <mxGeometry x="40" y="112" width="140" height="48" as="geometry" />
         </mxCell>
-        <mxCell id="pi-fe" value="Frame Extractor&#xa;(Python, 2 FPS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="pi-swim">
-          <mxGeometry x="30" y="195" width="140" height="50" as="geometry" />
+        <mxCell id="pi-mtx" value="MediaMTX&#xa;RTSP :8554 · WebRTC :8889" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="pi-swim">
+          <mxGeometry x="40" y="188" width="140" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="pi-cf" value="cloudflared&#xa;Tunnel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="pi-swim">
-          <mxGeometry x="30" y="275" width="140" height="45" as="geometry" />
+        <mxCell id="pi-fe" value="frame_extractor.py&#xa;0.1 fps/cam · jpeg q=100&#xa;≤1280×720" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="pi-swim">
+          <mxGeometry x="40" y="266" width="140" height="64" as="geometry" />
         </mxCell>
-        <mxCell id="pi-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="pi-cams" target="pi-mtx" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pi-e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="pi-mtx" target="pi-fe" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pi-e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="pi-mtx" target="pi-cf" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pi-cf" value="cloudflared&#xa;Named Tunnel&#xa;cam.printermonitor.app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="pi-swim">
+          <mxGeometry x="40" y="360" width="140" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="pi-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="pi-cams" target="pi-gst" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pi-e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="pi-gst" target="pi-mtx" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pi-e3" value="RTSP localhost" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="pi-mtx" target="pi-fe" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pi-e4" value="WebRTC WHEP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="pi-mtx" target="pi-cf" parent="pi-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         <!-- GCP LANE -->
         <mxCell id="gcp-swim" value="Google Cloud Platform" style="swimlane;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;startSize=26;rounded=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="50" width="420" height="510" as="geometry" />
+          <mxGeometry x="260" y="50" width="660" height="640" as="geometry" />
         </mxCell>
         <mxCell id="gcp-framesin" value="Pub/Sub&#xa;frames-in" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="15" y="45" width="120" height="45" as="geometry" />
+          <mxGeometry x="20" y="45" width="120" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="gcp-disp" value="Dispatcher&#xa;Cloud Function" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="150" y="45" width="130" height="45" as="geometry" />
+        <mxCell id="gcp-disp" value="Dispatcher CF&#xa;drop ts &gt; 5s&#xa;drop on 404/503" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="175" y="45" width="140" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="gcp-vertex" value="Vertex AI Endpoint&#xa;(YOLOv8 / judge)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="290" y="45" width="120" height="45" as="geometry" />
+        <mxCell id="gcp-vertex" value="Vertex AI judge&#xa;YOLOv8x · streak ≥3&#xa;n1-standard-4 + T4&#xa;always publishes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="350" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="gcp-frames-bkt" value="GCS bucket&#xa;*-frames&#xa;(public · frame_url)" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=10;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="520" y="40" width="120" height="65" as="geometry" />
         </mxCell>
         <mxCell id="gcp-detout" value="Pub/Sub&#xa;detections-out" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="290" y="135" width="120" height="45" as="geometry" />
+          <mxGeometry x="350" y="140" width="140" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="gcp-alert" value="Alert Manager&#xa;Cloud Function" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="150" y="135" width="130" height="45" as="geometry" />
+        <mxCell id="gcp-alert" value="Alert Manager CF&#xa;HIGH_SEV email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="175" y="140" width="140" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="gcp-firestore" value="Firestore&#xa;alerts / cooldowns" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=10;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="15" y="220" width="140" height="65" as="geometry" />
+        <mxCell id="gcp-firestore" value="Firestore (NATIVE, eur3)&#xa;inferences · alerts&#xa;budget_alerts&#xa;system_state · alert_cooldowns" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="15" y="230" width="150" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="gcp-smtp" value="Gmail SMTP&#xa;(email)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="180" y="225" width="120" height="50" as="geometry" />
+        <mxCell id="gcp-smtp" value="Gmail SMTP&#xa;cooldown 300s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="195" y="245" width="120" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="gcp-hosting" value="Firebase Hosting&#xa;Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="290" y="300" width="120" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="gcp-billing" value="GCP Billing&#xa;Budget Alert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="15" y="320" width="140" height="45" as="geometry" />
+        <mxCell id="gcp-hosting" value="Firebase Hosting&#xa;Dashboard (2 pages)&#xa;Live streams · Inference log" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="510" y="140" width="140" height="60" as="geometry" />
         </mxCell>
         <mxCell id="gcp-budgettop" value="Pub/Sub&#xa;budget-notifications" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="gcp-swim">
-          <mxGeometry x="170" y="320" width="130" height="45" as="geometry" />
+          <mxGeometry x="350" y="400" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gcp-budgetnot" value="Budget Notifier CF&#xa;handle_budget_alert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="175" y="400" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gcp-billing" value="GCP Billing&#xa;Budget Alert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="gcp-swim">
+          <mxGeometry x="520" y="400" width="120" height="50" as="geometry" />
         </mxCell>
 
-        <mxCell id="gcp-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="gcp-framesin" target="gcp-disp" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e1" value="Eventarc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-framesin" target="gcp-disp" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="gcp-e2" value="POST /predict" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-disp" target="gcp-vertex" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="gcp-vertex" target="gcp-detout" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="gcp-detout" target="gcp-alert" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e5" value="write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-alert" target="gcp-firestore" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e6" value="email" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-alert" target="gcp-smtp" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e7" value="onSnapshot" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;dashed=1;" edge="1" source="gcp-firestore" target="gcp-hosting" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e8" value="threshold" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-billing" target="gcp-budgettop" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="gcp-e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;" edge="1" source="gcp-budgettop" target="gcp-alert" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e3" value="upload JPEG" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-vertex" target="gcp-frames-bkt" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e4" value="publish" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-vertex" target="gcp-detout" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e5" value="Eventarc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-detout" target="gcp-alert" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e6" value="write inferences + alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-alert" target="gcp-firestore" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e7" value="email" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-alert" target="gcp-smtp" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e8" value="onSnapshot" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;dashed=1;" edge="1" source="gcp-firestore" target="gcp-hosting" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e9" value="public GET thumbnails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;dashed=1;" edge="1" source="gcp-frames-bkt" target="gcp-hosting" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e10" value="threshold" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-billing" target="gcp-budgettop" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e11" value="Eventarc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;dashed=1;" edge="1" source="gcp-budgettop" target="gcp-budgetnot" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e12" value="write budget_alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-budgetnot" target="gcp-firestore" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="gcp-e13" value="email" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-budgetnot" target="gcp-smtp" parent="gcp-swim"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         <!-- CROSS BOUNDARY -->
-        <mxCell id="cross-pub" value="publish JPEG" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;strokeWidth=2;" edge="1" source="pi-fe" target="gcp-framesin" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="cross-rtc" value="WebRTC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;strokeWidth=2;dashed=1;" edge="1" source="pi-cf" target="gcp-hosting" parent="1">
+        <mxCell id="cross-pub" value="publish JPEG (gRPC, SA key)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;strokeWidth=2;" edge="1" source="pi-fe" target="gcp-framesin" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="cross-killswitch" value="capture toggle&#xa;(polled, 5s cache)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;dashed=1;" edge="1" source="gcp-firestore" target="pi-fe" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <Array as="points"><mxPoint x="230" y="480" /><mxPoint x="600" y="480" /></Array>
+            <Array as="points"><mxPoint x="250" y="560" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cross-rtc" value="WebRTC (WHEP)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;strokeWidth=2;dashed=1;" edge="1" source="pi-cf" target="gcp-hosting" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="250" y="610" /><mxPoint x="900" y="610" /></Array>
           </mxGeometry>
         </mxCell>
 
         <!-- USER -->
         <mxCell id="end-user" value="End User&#xa;Browser / Email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="690" y="260" width="120" height="60" as="geometry" />
+          <mxGeometry x="960" y="270" width="140" height="60" as="geometry" />
         </mxCell>
         <mxCell id="user-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="gcp-hosting" target="end-user" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="user-e2" value="email" style="edgeStyle=orthogonalEdgeStyle;rounded=1;fontSize=9;" edge="1" source="gcp-smtp" target="end-user" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>

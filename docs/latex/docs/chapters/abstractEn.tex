@@ -1,3 +1,8 @@
-Abstract
-
-\textbf{Keywords}: 
+During the 3D printing process, various failures can occur that may cause material loss, time loss, and even damage to the equipment.
+The aim of this thesis is to develop a real-time monitoring system capable of recognizing printing failures using image processing methods.
+The proposed solution is based on a multi-camera surveillance system that continuously records the printing process, after which the frames are
+processed by a YOLOv8 neural network running in a cloud-based environment. The model was trained on a custom annotated dataset and is capable of
+recognizing 9 failure classes, achieving 89.2\% mAP50 accuracy and 83.6\% recall, while processing each frame takes approximately 23 ms of inference time.
+The system also includes a notification mechanism that provides immediate feedback to the user when an anomaly is detected.
+Based on the experimental results, the system is suitable for real-time failure detection and can contribute to increasing the efficiency of the
+printing process, as well as to reducing material loss.

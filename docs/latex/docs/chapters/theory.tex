@@ -4,7 +4,7 @@ Az additív gyártás olyan gyártási folyamatok összefoglaló neve, amelyek s
 
 A 3D nyomtatás az additív gyártás egyik legismertebb megvalósítása: egy digitális CAD-modellből kiindulva, számítógép vezérlésével, rétegről rétegre építi fel a kívánt tárgyat. A folyamat első lépése a digitális modell előkészítése: egy ún. szeletelőprogram a háromdimenziós geometriát egymással párhuzamos, vékony szeletekre bontja, majd ezekből G-kódot generál, ez az utasítássorozat irányítja a nyomtató mozgását és anyagadagolását. A nyomtató a G-kód alapján, rétegenként rakja fel az anyagot, amíg a darab el nem készül.
 
-A piacon számos 3D nyomtatási technológia érhető el, amelyek eltérő alapanyagokat és működési elveket alkalmaznak. A legelterjedtebb az \textbf{FDM} (Fused Deposition Modelling), amelynek során egy hőre lágyuló műanyag filamentet olvasztanak meg és extrudálnak vékony szálként a tárgyasztalra. Az \textbf{SLA} (Stereolithography) nyomtatók folyékony fotopolimer gyantát szilárdítanak meg precízen irányított lézersugárral; rendkívül finom részletek nyomtatására alkalmasak, ugyanakkor az elkészült darabok jelentős utómunkát igényelnek. Emellett megemlítendők a \textbf{PolyJet}, \textbf{Binder Jetting}, valamint a fémnyomtatásban alkalmazott \textbf{DMLS/SLM} technológiák is. Jelen dolgozat az FDM nyomtatók üzemeltetése során felmerülő hibákkal foglalkozik, ezért a továbbiakban kizárólag ezzel a technológiával foglalkozunk.
+A piacon számos 3D nyomtatási technológia érhető el, amelyek eltérő alapanyagokat és működési elveket alkalmaznak. A legelterjedtebb az \textbf{FDM} (Fused Deposition Modelling), amelynek során egy hőre lágyuló műanyag filamentet olvasztanak meg és extrudálnak vékony szálként a tárgyasztalra. Az \textbf{SLA} (Stereolithography) nyomtatók folyékony fotopolimer gyantát szilárdítanak meg precízen irányított lézersugárral; rendkívül finom részletek nyomtatására alkalmasak, ugyanakkor az elkészült darabok jelentős utómunkát igényelnek. Emellett megemlítendők a \textbf{PolyJet}, \textbf{Binder Jetting}, valamint a fémnyomtatásban alkalmazott \textbf{DMLS/SLM} technológiák is. A két legelterjedtebb eljárást, az SLA- és az FDM-nyomtatást a \ref{fig:sla}. és a \ref{fig:fdm}. ábra szemlélteti. Jelen dolgozat az FDM nyomtatók üzemeltetése során felmerülő hibákkal foglalkozik, ezért a továbbiakban kizárólag ezzel a technológiával foglalkozunk.
 
     \begin{figure}[H]
         \centering
@@ -12,11 +12,13 @@ A piacon számos 3D nyomtatási technológia érhető el, amelyek eltérő alapa
             \centering
             \includegraphics[width=\linewidth,height=6cm,keepaspectratio]{figures/images/literature/SLA.jpg}
             \caption[SLA nyomtató]{SLA nyomtató\footnotemark}
+            \label{fig:sla}
         \end{minipage}\hfill
         \begin{minipage}[t]{0.48\textwidth}
             \centering
             \includegraphics[width=\linewidth,height=6cm,keepaspectratio]{figures/images/literature/FDM.png}
             \caption[FDM nyomtató]{FDM nyomtató\footnotemark}
+            \label{fig:fdm}
         \end{minipage}
     \end{figure}
     \addtocounter{footnote}{-1}
@@ -26,12 +28,13 @@ A piacon számos 3D nyomtatási technológia érhető el, amelyek eltérő alapa
 
     \subsection{Nyersanyagok}
 
-        Az FDM nyomtatók nyersanyaga a filament. A felhasználási igényektől függően számos anyagfajta áll rendelkezésre, mindegyik eltérő mechanikai, hőtani és kémiai tulajdonságokkal rendelkezik \cite{all3dp_filaments}.
+        Az FDM nyomtatók nyersanyaga a filament. A felhasználási igényektől függően számos anyagfajta áll rendelkezésre, mindegyik eltérő mechanikai, hőtani és kémiai tulajdonságokkal rendelkezik \cite{all3dp_filaments}. A megfelelő anyag kiválasztásának főbb szempontjait a \ref{fig:filamentchart}. ábra foglalja össze.
 
         \begin{figure}[H]
             \centering
             \includegraphics[width=0.6\textwidth]{figures/images/literature/6basicchart.jpg}
             \caption[Döntési szempontok]{Döntési szempontok\footnotemark}
+            \label{fig:filamentchart}
         \end{figure}
         \footnotetext{\textit{Fotó}:\url{https://all3dp.com/1/3d-printer-filament-types-3d-printing-3d-filament/}}
 

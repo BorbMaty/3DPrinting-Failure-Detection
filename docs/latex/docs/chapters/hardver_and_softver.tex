@@ -8,7 +8,7 @@
 
                 \begin{figure}[H]
                     \centering
-                    {\includegraphics[width=\textwidth]{figures/images/literature/systemarch.jpg}}
+                    {\includegraphics[width=\textwidth]{figures/images/literature/gcp_architecture.drawio.png}}
                     \caption{A rendszer}
                     \label{fig:systemarch}
                 \end{figure}
@@ -18,18 +18,18 @@
     A kamera képek előállításért felelő kamera Agent szerepét egy Raspberry Pi 4B 8GB tölti be,\cite{raspberry_pi}
     3 darab rácsatolt webkamerával kiegészítve. A Raspberry Pi mint edge eszköz rendkívül sokoldalú eszköz.
     Keveset is fogyaszt, megfelelő számú USB porttal is rendelkezik, és az erőforrások is megfelelőek számunkra.
-    A Raspberry OS pedig tökéletes a szükséges docker konténerek és python scriptek futtatására.
+    A Raspberry OS pedig tökéletes a szükséges Docker konténerek és Python szkriptek futtatására.
     
 
 
-    \section{Szolgáltatások a PI-n}
-    A pi-n három szolgáltatás fut, melyek az indítás után azonnal elindulnak systemd szolgáltatásként.
+    \section{Szolgáltatások a Pi-n}
+    A Pi-n három szolgáltatás fut, melyek az indítás után azonnal elindulnak systemd szolgáltatásként.
     Ezek nélkül a rendszer nem valósulhatna meg.
 
         \subsection{MediaMTX}
         A MediaMTX (korábban rtsp-simple-server) egy könnyűsúlyú, nyílt forráskódú médiaközvetítő szerver, mely Go programozási nyelven íródott\cite{mediamtx}.
         Szerepe a rendszerben, hogy a webkamerák által előállított nyers videófolyamokat RTSP protokoll szerint tegye elérhetővé a hálózaton.
-        A pi-n systemd szolgáltatásként fut, így az eszköz indításakor automatikusan elindul, emberi beavatkozás nélkül.
+        A Pi-n systemd szolgáltatásként fut, így az eszköz indításakor automatikusan elindul, emberi beavatkozás nélkül.
         Konfigurációs fájlja definiálja a három kamerastream elérési útját, a kódolási paramétereket, valamint az újracsatlakozási logikát.
         A H264-es kódolású RTSP végpontokat a Cloudflare alagúton keresztül éri el a dashboard, ahol WebRTC formátumban kerülnek megjelenítésre.
         A stream pipeline teljes folyamatát a \ref{fig:mediamtx}. ábra szemlélteti.
@@ -45,26 +45,31 @@
         A képkockák kinyerésért a \texttt{frame-extractor} szolgáltatás felelős, melynek belépési pontja a \texttt{main.py} Python script.
         Feladata, hogy a három RTSP streamből folyamatosan képkockákat olvasson ki, azokat feldolgozza, majd JSON üzenetként publikálja
         a \texttt{frames-in} Pub/Sub csatornára, ahonnan a \texttt{dispatcher} Cloud Függvény továbbítja őket a Vertex AI végpontra.
-        A szolgáltatás a pi-n systemd szolgáltatásként fut, és az \texttt{sa-frame-extractor} service account kulcsával hitelesíti magát a Google Cloud felé.
+        A szolgáltatás a Pi-n systemd szolgáltatásként fut, és az \texttt{sa-frame-extractor} szervízfelhasználó kulcsával hitelesíti magát a Google Cloud felé.
 
-        \subsubsection{Szálkezelés és capture loop}
-        A script induláskor beolvassa a kamerák RTSP URL-jeit és azonosítóit a környezeti változókból, majd minden egyes kamerához
-        egy dedikált szálat (\texttt{threading.Thread}) indít. Minden szál egy önálló \texttt{capture\_loop} függvényt futtat,
-        amely az OpenCV\cite{opencv} \texttt{VideoCapture} osztályán keresztül csatlakozik az adott RTSP streamhez.
-        Ha a kapcsolat megszakad, például a kamera újraindul vagy a hálózat elvész, a loop automatikusan újracsatlakozást kísérel meg
-        5 másodpercenként, így a rendszer emberi beavatkozás nélkül helyreáll.
+        \subsubsection{Szálkezelés és olvasási modell}
+        A script induláskor beolvassa a kamerák RTSP URL-jeit és azonosítóit a környezeti változókból. Minden kamerához két szál tartozik.
+        Az első egy folyamatosan futó olvasószál (\texttt{FrameReader}), amely az OpenCV\cite{opencv} \texttt{VideoCapture} osztályán keresztül
+        kapcsolódik az adott RTSP streamhez, és a beérkező képkockák közül mindig csak a legfrissebbet tartja meg, a hozzá tartozó,
+        a beolvasás pillanatában rögzített UTC-időbélyeggel együtt. Így a publikált képkocka időbélyege a valós rögzítési időpontot tükrözi,
+        nem pedig a feldolgozás idejét, ami elengedhetetlen a felhő oldalán végzett elavultság-szűréshez. Ha a kapcsolat megszakad, például
+        a kamera újraindul vagy a hálózat elvész, az olvasószál automatikusan újracsatlakozást kísérel meg, így a rendszer emberi beavatkozás nélkül helyreáll.
 
         \subsubsection{Képfeldolgozás és publikálás}
-        Sikeres kapcsolat esetén a loop \texttt{CAPTURE\_FPS} (alapértelmezetten 2 fps) sebességgel olvas képkockákat.
-        Minden egyes képkockán a következő feldolgozási lépések hajtódnak végre:
+        A kamerákhoz tartozó második szál a publikáló ciklus (\texttt{publish\_loop}), amely \texttt{CAPTURE\_FPS} ütemben
+        (alapértelmezetten 0,1 fps, azaz kameránként tíz másodpercenként egy képkocka) kiveszi az olvasószáltól a legfrissebb képkockát,
+        és elvégzi rajta a következő feldolgozási lépéseket:
         \begin{enumerate}
-            \item Az OpenCV a kamera natív felbontásáról átméretezi a képet a konfigurált \texttt{FRAME\_WIDTH} × \texttt{FRAME\_HEIGHT} méretre (alapértelmezetten 640×480 pixel).
-            \item A képkocka JPEG formátumba kerül kódolásra a beállított \texttt{JPEG\_QUALITY} értékkel (alapértelmezetten 70), csökkentve az átviteli méretet.
+            \item Amennyiben a képkocka mérete meghaladja a konfigurált \texttt{FRAME\_WIDTH} × \texttt{FRAME\_HEIGHT} értéket (alapértelmezetten 1280×720 pixel),
+                  az OpenCV a képarány megtartásával lekicsinyíti azt; a célméretnél kisebb képeket változatlanul hagyja.
+            \item A képkocka JPEG formátumba kerül kódolásra a beállított \texttt{JPEG\_QUALITY} értékkel (alapértelmezetten 100).
             \item A JPEG bájttömb Base64 kódolással ASCII szöveggé alakul, hogy JSON üzenetbe ágyazható legyen.
             \item A script egy JSON objektumot állít össze, amely tartalmazza a \texttt{camera\_id} azonosítót, a \texttt{seq} szekvenciaszámot,
                   az \texttt{ts} UTC-időbélyeget, valamint a \texttt{data\_b64} mezőt a Base64-kódolt képpel.
             \item A kész JSON payload publikálásra kerül a Pub/Sub \texttt{frames-in} topicra.
         \end{enumerate}
+        A publikáló ciklus minden iteráció előtt ellenőrzi a Firestore \texttt{system\_state/extraction} dokumentumának \texttt{enabled} mezőjét
+        (öt másodpercre gyorsítótárazva), így a dashboardról szüneteltethető vagy folytatható a képkockák küldése anélkül, hogy a szolgáltatást újra kellene indítani.
 
         \subsubsection{Health check szerver}
         Mivel a szolgáltatás Cloud Run-kompatibilis konténerként is üzemeltethető, a script egy egyszerű HTTP szervert indít a \texttt{PORT}
@@ -85,10 +90,10 @@
                 \texttt{FRAMES\_TOPIC} & - (kötelező) & Pub/Sub topic neve \\
                 \texttt{RTSP\_URLS}    & - (kötelező) & Vesszővel elválasztott RTSP URL-ek \\
                 \texttt{CAMERA\_IDS}   & cam1,cam2,cam3 & Kamera azonosítók \\
-                \texttt{CAPTURE\_FPS}  & 2 & Másodpercenkénti képkockák száma \\
-                \texttt{JPEG\_QUALITY} & 70 & JPEG tömörítési minőség (0–100) \\
-                \texttt{FRAME\_WIDTH}  & 640 & Képkocka szélessége pixelben \\
-                \texttt{FRAME\_HEIGHT} & 480 & Képkocka magassága pixelben \\
+                \texttt{CAPTURE\_FPS}  & 0,1 & Másodpercenkénti képkockák száma \\
+                \texttt{JPEG\_QUALITY} & 100 & JPEG tömörítési minőség (0–100) \\
+                \texttt{FRAME\_WIDTH}  & 1280 & Képkocka maximális szélessége pixelben \\
+                \texttt{FRAME\_HEIGHT} & 720 & Képkocka maximális magassága pixelben \\
                 \texttt{PORT}          & 8080 & Health check HTTP szerver portja \\
                 \hline
             \end{tabular}
@@ -102,39 +107,41 @@
         így a tűzfal és a NAT nem akadályozza az elérést. Ez különösen fontos a RTSP videóstreamek dashboardra való eljuttatásakor.
 
         A Pi-n ez is systemd szolgáltatásként fut, az induláskor automatikusan csatlakozik.
-        Jelenleg ideiglenes (\textit{quick tunnel}) alagutakat használunk, amelyek ingyenesek, azonban minden újraindításkor új, véletlenszerű URL-t kapnak,
-        és időnként megszakadhatnak. Egy esetleges éles üzembe helyezés esetén célszerű lenne állandó (\textit{named tunnel}) alagútra váltani,
-        amely fix URL-t biztosít és robusztusabb kapcsolatot nyújt.
+        A rendszer állandó (\textit{named tunnel}) alagutat használ, amely fix, nyilvános aldomainen (\texttt{cam.printermonitor.app}) teszi elérhetővé a streameket.
+        Ez a korábban használt ideiglenes (\textit{quick tunnel}) megoldással szemben minden újraindításkor ugyanazt az URL-t tartja meg,
+        így a dashboard stream-kapcsolata a Pi újraindítása után sem szakad meg.
 
     \section{Cloud Stack}
     A rendszer felhőoldali komponensei a Google Cloud Platformon futnak, amely igen széleskörű eszköztárat biztosított a projekt megvalósításához.
     Az infrastruktúra felépítéséhez Terraform keretrendszert használtunk.
 
         \subsection{Terraform keretrendszer}
-        A terraform egy deklaratív nyelvezetű keretrendszer, mely használatával bármilyen infrastruktúrai elem és erőforrás definiálható
-        emberek számára is értelmezhető nyelven\cite{terraform} .Ezen megvalósítások, verziózhatóak, disztributálhatóak és bármikor újrafelhasználhatóak.
+        A Terraform egy deklaratív nyelvezetű keretrendszer, mely használatával bármilyen infrastruktúrai elem és erőforrás definiálható
+        emberek számára is értelmezhető nyelven\cite{terraform}. Ezen megvalósítások verziózhatóak, disztributálhatóak és bármikor újrafelhasználhatóak.
         Segítségével az alkalmazás minden életszakasza könnyűszerrel menedzselhető, ugyanitt maga az egész folyamat rendkívül könnyen automatizálható.
         
         \subsection{Terraform működése}
-        A terraform a különböző cloud platformok erőforrásait a saját Api-jain keresztül menedzseli, a közösségnek hála ma már szinte bármelyik
-        szolgáltató rendszerét használhatjuk a terraformon keresztül. Például AWS, Google Cloud, Kubernetes, Git stb. A terraform működése 3 fázisban történik:
+        A Terraform a különböző felhőplatformok erőforrásait azok saját API-jain keresztül menedzseli, a közösségnek hála ma már szinte bármelyik
+        szolgáltató rendszerét használhatjuk a Terraformon keresztül. Például AWS, Google Cloud, Kubernetes, Git stb. A Terraform működése 3 fázisban történik:
 
             \subsubsection{Írás-Write}
             Definiáljuk az erőforrásokat, melyek akár több szolgáltatótól is származhatnak, egy .tf kiterjesztésű fileba.
             
             \subsubsection{Tervezés-Plan}
-            A terraform plan parancs kiadása után, létrejön a terv, mely leírja az infrastruktúrát, mi jön létre, mi változik vagy éppen mi szűnik majd meg.
+            A \texttt{terraform plan} parancs kiadása után létrejön a terv, mely leírja az infrastruktúrát: mi jön létre, mi változik vagy éppen mi szűnik majd meg.
             Az általunk megadott Konfigurációs fileoknak megfelelően.
 
             \subsubsection{Alkalmazás-Apply}
-            Engedélyezés esetén a terraform elvégzi a szükséges műveleteket, tiszteletben tartva az erőforrások közötti függőségi sorrendet.
+            Engedélyezés esetén a Terraform elvégzi a szükséges műveleteket, tiszteletben tartva az erőforrások közötti függőségi sorrendet.
             Létrehozza, módosítja vagy törli az érintett erőforrásokat, majd frissíti az állapotfájlt (\texttt{terraform.tfstate}),
             amely a valós infrastruktúra leképezéseként szolgál a jövőbeli futtatásokhoz.
+            A három fázis együttes folyamatát a \ref{fig:terraformstages}. ábra foglalja össze.
 
                 \begin{figure}[H]
                     \centering
                     {\includegraphics[width=0.6\textwidth]{figures/images/literature/terraformstages.png}}
                     \caption[Terraform Lépések]{Terraform Lépések~\footnotemark}
+                    \label{fig:terraformstages}
                 \end{figure}
                 \footnotetext{\textit{Terraform}: \url{https://developer.hashicorp.com/terraform/intro/}}
 
@@ -156,33 +163,50 @@
         Minden beérkező képkockát Base64-ból visszaalakít, OpenCV-vel dekódol, majd a YOLO modellel elvégzi az objektumdetekciót.
         Az eredmény tartalmazza az észlelt hibaosztályokat (\texttt{label}), azok konfidenciaértékeit, valamint a határoló téglalapok
         koordinátáit mind pixel-, mind normalizált formában.
-        A detekciós eredmény ezt követően publikálásra kerül a \texttt{detections-out} Pub/Sub csatornára.
+
+        A pillanatnyi téves riasztások szűrésére a konténer kameránként és hibaosztályonként számon tartja, hány egymást követő képkockán
+        jelent meg ugyanaz a hiba. Egy detekció csak akkor minősül megerősítettnek, ha legalább \texttt{STREAK\_REQUIRED}
+        (alapértelmezetten három) egymást követő képkockán át látható; ez kiszűri az egyetlen képkockán felvillanó, zajból eredő észleléseket.
+        Mivel ez a számláló a folyamat memóriájában él, a végpontnak egyetlen, állandó példányon (\texttt{min} = \texttt{max} = 1 replika) kell futnia.
+
+        A feldolgozott képkockát a konténer feltölti a \texttt{FRAMES\_BUCKET} névvel megadott GCS tárolóba, és az így kapott nyilvános URL-t a
+        \texttt{frame\_url} mezőben csatolja az eredményhez, lehetővé téve, hogy a dashboard utólag a pontosan feldolgozott képet jelenítse meg.
+        A detekciós eredmény ezt követően minden képkockára publikálásra kerül a \texttt{detections-out} Pub/Sub csatornára, beleértve azokat is,
+        amelyeken nem történt észlelés; erre az adatra a dashboard inferencia-naplója támaszkodik.
 
         A végpont csak aktív használat közben generál költséget: tétlen (kitelepített, de nem hívott) állapotban nem számlázódik,
         míg folyamatos terhelés esetén napi körülbelül 37\$-os költséggel kell számolni.
 
         \subsection{Service Accounts}
         A szervíz felhasználók, olyan egyedi emailcímmel rendelkező entitások, melyek segítségével, különböző applikációk, virtuális gépek, vagy egyéb megvalósítások
-        kommunikálhatnak a Google Api-val, emberi felhasználók helyett, ezzel biztonságos összeköttetést biztosítva a különböző erőforrások között.
+        kommunikálhatnak a Google API-jával, emberi felhasználók helyett, ezzel biztonságos összeköttetést biztosítva a különböző erőforrások között.
 
             \subsubsection{sa-frame-extractor}
-            A pi-n fut szerepe, hogy a kinyert képkockák publikálva legyenek a pub/sub csatornára. Jogosultságai, hogy publikál a frames-in csatornára,
-            és aiplatform felhasználó
+            \begin{sloppypar}
+            A Raspberry Pi-n futó \texttt{frame-extractor} szolgáltatás ezzel a szervízfelhasználóval hitelesíti magát a Google Cloud felé.
+            Szerepe, hogy a kinyert képkockák publikálhatóak legyenek a Pub/Sub üzenetbuszra. Jogosultságai: \texttt{pubsub.publisher}
+            a \texttt{frames-in} csatornán, valamint \texttt{aiplatform.user} a Vertex AI végpont eléréséhez.
+            \end{sloppypar}
 
             \subsubsection{sa-dispatcher}
-            Feladata, hogy elosztja a streameket, és meghívja a VertexAi endpointot. Jogosultságai, hogy aiplatform felhasználó, pub/sub feliratkozó a detections-out csatornán, és
-            aktiválhatja az Alert-managert szükség esetén
+            \begin{sloppypar}
+            A \texttt{dispatcher} Cloud Function ezzel a szervízfelhasználóval fut. Feladata, hogy a beérkező képkockákat továbbítsa
+            a Vertex AI végpontnak, és szükség esetén aktiválja az Alert-Managert. Jogosultságai: \texttt{aiplatform.user} a végpont
+            meghívásához, \texttt{pubsub.subscriber} a \texttt{detections-out} csatornán, valamint \texttt{run.invoker} az Alert-Manager
+            függvény meghívásához.
+            \end{sloppypar}
 
             \subsubsection{sa-alert-manager}
             \begin{sloppypar}
-            A figyelmeztetés kezelésért felelő, egyaránt az anomáliák észlelésekor, és a költségvetés meghaladásakor. Jogosultságai: \texttt{datastore.user}, \texttt{firebase.admin},
+            A figyelmeztetés kezelésért felelő, egyaránt az anomáliák észlelésekor, és a költségvetés meghaladásakor. Jogosultságai: \texttt{datastore.user},
             \texttt{eventarc.eventReceiver}, \texttt{pubsub.subscriber}, \texttt{run.invoker}.
             \end{sloppypar}
 
             \subsubsection{sa-cicd}
             \begin{sloppypar}
-            Mivel az, hogy a terraform infrát mi kézzel szerkesszük nem egy jó praktika, így ehhez egy autómatizált github akciót használunk, ezzel szervíz pont ennek kezeléséért felelős.
-            Jogosultságai: \texttt{artifactregistry.writer}, \texttt{pubsub.admin}, \texttt{editor}, \texttt{iam.serviceAccountUser}
+            A Terraform-infrastruktúra kézi szerkesztése nem ajánlott gyakorlat, ezért ezt egy automatizált GitHub Actions workflow végzi,
+            amely ezzel a szervízfelhasználóval hitelesíti magát. Feladata az infrastruktúra kitelepítése és a \texttt{judge} konténer image
+            feltöltése. Jogosultságai: \texttt{artifactregistry.writer}, \texttt{pubsub.admin}, \texttt{editor} és \texttt{iam.serviceAccountUser}.
             \end{sloppypar}
             \subsubsection{Vertex AI agent}
             \begin{sloppypar}
@@ -197,7 +221,7 @@
 
         \subsection{Pub/Sub Topics}
         A Google Cloud Pub/Sub egy aszinkron üzenetközvetítő szolgáltatás, amely lehetővé teszi az alkalmazáskomponensek közötti laza csatolású kommunikációt\cite{pubsub}.
-        A rendszer három darab pub/sub csatornát használ, melyek a következők: \texttt{frames-in}, mely a még nyers képkockákat továbbítja a pi-től a Vertex AI végpont felé.
+        A rendszer három darab Pub/Sub csatornát használ, melyek a következők: \texttt{frames-in}, mely a még nyers képkockákat továbbítja a Pi-től a Vertex AI végpont felé.
         A \texttt{detections-out}, mely a Vertex AI végpont által észlelt anomáliák eredményét továbbítja a dashboard felé, és a \texttt{budget-notifications}, mely figyelmeztet minket
         amennyiben átléptük a kiszabott költségvetést.
             
@@ -205,7 +229,7 @@
 
         \subsection{Google Cloud Függvények}
         A rendszer három Cloud Function (Gen2) példányt alkalmaz, amelyek Pub/Sub eseményekre triggerelődnek és kiszolgáltatás nélkül,
-        skálázhatóan futnak.Mindhárom függvény az \texttt{sa-alert-manager} illetve \texttt{sa-dispatcher} service account jogosultságaival rendelkezik.
+        skálázhatóan futnak. Mindhárom függvény az \texttt{sa-alert-manager}, illetve \texttt{sa-dispatcher} szervízfelhasználó jogosultságaival rendelkezik.
 
             \subsubsection{Dispatcher}
             A Dispatcher hidat képez az edge eszköz és a Vertex AI végpont között. A \texttt{frames-in} Pub/Sub csatornáról kap üzenetet,
@@ -215,14 +239,16 @@
             A három Cloud Függvény közül ez a leginkább memóriaigényes, mivel képkockák bináris adatát szállítja HTTP-n keresztül.
 
             \subsubsection{Alert-Manager}
-            A detekciós pipeline záró állomása. A \texttt{detections-out} csatornáról érkező üzenetekből kiszűri azokat a detektált hibákat,
-            amelyek konfidenciaértéke eléri a beállított küszöböt (alapértelmezetten 35\%). Az átmenő detektálásokat a Firestore \texttt{alerts}
-            kollekcióba írja, rögzítve a kamera azonosítóját, az észlelt hibákat, az időbélyeget és a szekvenciaszámot.
+            A detekciós pipeline záró állomása. A \texttt{detections-out} csatornáról érkező minden üzenetet, a hiba nélkülieket is,
+            naplóz a Firestore \texttt{inferences} kollekciójába, amely a dashboard inferencia-naplójának forrása. Ezt követően kiszűri azokat
+            a detektált hibákat, amelyek konfidenciaértéke eléri a beállított küszöböt (alapértelmezetten 35\%). Az átmenő detektálásokat a Firestore
+            \texttt{alerts} kollekcióba írja, rögzítve a kamera azonosítóját, az észlelt hibákat, az időbélyeget és a szekvenciaszámot.
 
             E-mail értesítést kizárólag magas súlyosságú hibaosztályok esetén küld: \texttt{spagetti}, \texttt{not\_sticking},
-            \texttt{layer\_shift} és \texttt{warping}. Az ismétlődő riasztások elkerülése érdekében kameránként 60 másodperces
-            visszatartási időt (\textit{cooldown}) alkalmaz, amelyet a Firestore \texttt{alert\_cooldowns} kollekcióban tárol.
-            Az e-mail HTML formátumú, tartalmazza az észlelt hibák táblázatát és egy közvetlen linket a dashboardra.
+            \texttt{layer\_shift} és \texttt{warping}. Az ismétlődő riasztások elkerülése érdekében egyetlen, az egész rendszerre közös,
+            300 másodperces visszatartási időt (\textit{cooldown}) alkalmaz, amelyet a Firestore \texttt{alert\_cooldowns} kollekciójában,
+            a \texttt{global\_email} kulcs alatt tárol. A visszatartás csak akkor indul el, ha az e-mail ténylegesen kiment, így egy átmeneti
+            SMTP-hiba nem nyomja el a következő riasztást. Az e-mail HTML formátumú, tartalmazza az észlelt hibák táblázatát és egy közvetlen linket a dashboardra.
 
             \subsubsection{Budget Notifier}
             E függvény célja, hogy megakadályozza a felhőköltségek elszabadulását. A \texttt{budget-notifications} Pub/Sub csatornán
@@ -234,24 +260,31 @@
             
         \subsection{Firestore Collections}
         Az adatbáziskezelő rendszereknek két nagy fajtáját különböztetünk meg, a relációs adatbázisokat, és a nem relációs avagy NoSQL (Not only SQL) adatbázisokat.
-        A fő különbség, hogy a relációs adatbázisokban az adatok táblákba rendezettek, és köztük jól meghatározott kapcsolatok vannak. Viszont a NoSql adatbázisokban az 
-        adatok úgynevezett dokumentumokban vannak eltárolva, melyek szerkezete sokkal rugalmasabb és nem igényel előre meghatározott sémát. Mivel a projekt főként json formátumú
+        A fő különbség, hogy a relációs adatbázisokban az adatok táblákba rendezettek, és köztük jól meghatározott kapcsolatok vannak. Viszont a NoSQL adatbázisokban az
+        adatok úgynevezett dokumentumokban vannak eltárolva, melyek szerkezete sokkal rugalmasabb és nem igényel előre meghatározott sémát. Mivel a projekt főként JSON formátumú
         adatokkal dolgozik, így a NoSQL adatbázisok sokkal jobban megfelelnek a céljainknak, és a Firestore egy igen népszerű és megbízható választás ezen a téren\cite{firestore}.
 
-        A rendszer összesen három Firestore kollekciót használ:
+        A rendszer az alábbi Firestore kollekciókat és állapotdokumentumokat használja:
 
         \begin{itemize}
+            \item Az \texttt{inferences} kollekció minden egyes feldolgozott képkocka inferencia-eredményét tárolja, a hiba nélkülieket is.
+            Ez a kollekció szolgál a dashboard inferencia-naplójának adatforrásául, és a hozzá tartozó \texttt{frame\_url} mezőn keresztül
+            a pontosan feldolgozott képkocka is visszanézhető.
+
             \item Az \texttt{alerts} kollekció tárolja a detektált anomáliák bejegyzéseit. Mezői: \texttt{camera\_id} (melyik kamera észlelte),
             \texttt{detections[]} (a hibák tömbje: név + konfidencia + bounding box), \texttt{timestamp} (mikor történt a detekció),
             \texttt{seq} (a képkocka szekvenciaszáma, amelyet a \texttt{frame-extractor} biztosít) és \texttt{created\_at} (mikor került be a bejegyzés).
             A dashboardon való hatékony keresést egy kompozit index segíti: \texttt{camera\_id ASC} + \texttt{timestamp DESC},
             azaz kamera szerint növekvő, időbélyeg szerint csökkenő sorrendben.
 
-            \item Az \texttt{alert\_cooldowns} kollekció az e-mail értesítések visszatartási idejét kezeli kameránként,
-            megakadályozva a riasztás-özönt rövid időn belül ismétlődő anomáliák esetén.
+            \item Az \texttt{alert\_cooldowns} kollekció az e-mail értesítések visszatartási idejét kezeli. Egyetlen, az egész rendszerre közös
+            \texttt{global\_email} kulcs alatt tárolja a legutóbbi sikeres küldés időpontját, megakadályozva a riasztás-özönt rövid időn belül ismétlődő anomáliák esetén.
 
             \item A \texttt{budget\_alerts} kollekció a GCP költségvetési riasztásokat naplózza, beleértve a felhasznált összeget,
             a beállított küszöböt és az esemény időbélyegét.
+
+            \item A \texttt{system\_state/extraction} dokumentum tárolja a képkocka-rögzítés be- vagy kikapcsolt állapotát (\texttt{enabled} mező).
+            A dashboardról az operátor állítja, a Raspberry Pi-n futó \texttt{frame-extractor} pedig ezt olvassa, így a rögzítés távolról szüneteltethető.
         \end{itemize}
 
 
@@ -272,17 +305,23 @@
         \end{figure}
 
     \section{Dashboard}
-    A rendszer felhasználói felülete egy egyoldalas webalkalmazás (Single Page Application), melyet a Firebase Hosting platform szolgál ki,
-    így külön szerver üzemeltetése nélkül érhető el a böngészőből\cite{firebase_hosting}.
-    Az alkalmazás két fő funkciót lát el párhuzamosan.
+    A rendszer felhasználói felülete egy webalkalmazás, melyet a Firebase Hosting platform szolgál ki,
+    így külön szerver üzemeltetése nélkül érhető el a böngészőből\cite{firebase_hosting}. A felület két nézetből áll.
 
-    Egyrészt valós időben jeleníti meg a három kamera videofolyamát WebRTC technológia segítségével,
-    a MediaMTX szerveren és a Cloudflare alagúton keresztül érkező RTSP streamekre támaszkodva.
-    Másrészt a Firebase Firestore adatbázishoz való közvetlen, valós idejű kapcsolaton keresztül (\texttt{onSnapshot} listener)
-    azonnal megjelenik minden újonnan detektált anomália, azok neve és konfidenciaértéke, valamint az észlelés időbélyege és a forrás kamera azonosítója.
+    Az első nézet (\textit{Live streams}) valós időben jeleníti meg a három kamera videofolyamát WebRTC technológia segítségével,
+    a MediaMTX szerveren és a Cloudflare alagúton keresztül érkező RTSP streamekre támaszkodva. Erre a nézetre a Firebase Firestore
+    adatbázishoz való közvetlen, valós idejű kapcsolaton keresztül (\texttt{onSnapshot} listener) kerülnek rá a nemrég megerősített
+    detekciók jelölései; ezek néhány tíz másodperces késéssel követik az élő képet, mivel előbb végig kell haladniuk a teljes feldolgozási láncon.
+    Ugyanitt található a rögzítés be- és kikapcsolására szolgáló vezérlő is, amelyet csak operátori Google-fiókkal bejelentkezve lehet
+    használni; ez a \texttt{system\_state/extraction} dokumentumot írja, amelyet a Raspberry Pi olvas.
 
-    A dashboard vizuálisan is visszajelzést ad a rendszer állapotáról: amennyiben magas prioritású anomália érkezik,
-    a felület piros kerettel jelenik meg (CSS \texttt{alerting} osztály aktiválásával).
+    A második nézet (\textit{Inference log}) az \texttt{inferences} kollekcióból építkezik: minden feldolgozott képkockához megjeleníti
+    a hozzá tartozó képkocka-bélyeget és a detekciók táblázatát, a határoló téglalapokat pedig pontosan arra a képkockára rajzolja,
+    amelyet a modell ténylegesen feldolgozott. Így ez a nézet képkocka-szinten hű képet ad a modell döntéseiről.
+
+    A dashboard vizuálisan is visszajelzést ad a rendszer állapotáról: normál működés közben a felület semleges állapotot mutat
+    (\ref{fig:dash_normal}. ábra), amennyiben pedig magas prioritású anomália érkezik, a felület piros kerettel jelenik meg
+    (CSS \texttt{alerting} osztály aktiválásával), ahogy azt a \ref{fig:dash_high}. ábra szemlélteti.
     Hasonlóan, a költségvetési riasztás esetén sárga kerettel jelez (\texttt{budget-alert} osztály),
     így a felhasználó azonnal értesül a túllépésről anélkül, hogy az e-mailjét kellene ellenőriznie.
 
@@ -290,24 +329,36 @@
         \centering
         {\includegraphics[width=\textwidth]{figures/images/literature/dash_normal.png}}
         \caption{A dashboard normál működési állapotban}
+        \label{fig:dash_normal}
     \end{figure}
 
     \begin{figure}[H]
         \centering
         {\includegraphics[width=\textwidth]{figures/images/literature/dash_high.png}}
         \caption{A dashboard anomália detektálás esetén}
+        \label{fig:dash_high}
     \end{figure}
 
     \section{GitHub Action Workflows}
-    A projekt folyamatos integrációját és automatizált kitelepítését (CI/CD) két GitHub Action workflow biztosítja,
+    A projekt folyamatos integrációját és automatizált kitelepítését (CI/CD) több GitHub Action workflow biztosítja,
     melyek a megfelelő kódváltozásra automatikusan lefutnak, csökkentve a manuális beavatkozás szükségességét és az emberi hibák esélyét\cite{github_actions}.
+    Az infrastruktúra és a konténer kezelésén túl egy külön workflow (\texttt{python-tests.yml}) minden, a szolgáltatások kódját érintő változásnál
+    lefuttatja a Python egységteszteket, és 90\%-os lefedettségi küszöböt vár el, egy további workflow (\texttt{compileLatex.yml}) pedig a dolgozat
+    PDF-jét fordítja újra. Az alábbiakban a két fő, infrastruktúrát és konténert érintő workflow-t mutatjuk be részletesen.
 
         \subsection{Terraform lépések automatizálása}
-        Ez a workflow a cloud infrastruktúra változtatásait kezeli automatikusan.
-        Pull request esetén csak ellenőrző lépések futnak le, hogy a változtatások biztonságosak és helyesek legyenek merge előtt.
-        Merge eseményre, a \texttt{main} ágra, a workflow elvégzi a tényleges infrastruktúra módosítást a GCP-n.
+        Ez a workflow a felhőinfrastruktúra változtatásait kezeli automatikusan.
+        Pull request esetén csak ellenőrző lépések futnak le, hogy a változtatások biztonságosak és helyesek legyenek a merge előtt:
+        a workflow lefuttatja a \texttt{terraform plan} parancsot, amelynek kimenetét egy emberi felülvizsgáló a pull request keretében
+        ellenőrzi, mielőtt jóváhagyná az összevonást. Merge eseményre a \texttt{main} ágra a workflow elvégzi a tényleges infrastruktúra
+        módosítást (\texttt{terraform apply}) a GCP-n.
 
-            \subsubsection{Konfigurációs ellenőrzés-Chekov}
+        Megjegyzendő korlát, hogy a tervet (\texttt{plan}) és annak alkalmazását (\texttt{apply}) jelenleg a merge eseménye kapcsolja össze:
+        a \texttt{main} ágra történő összevonás után az \texttt{apply} külön emberi megerősítés nélkül lefut. Robusztusabb megoldás lenne
+        egy explicit, kézi jóváhagyási kapu (\textit{manual approval gate}) beiktatása közvetlenül az \texttt{apply} lépés elé, amely a
+        ténylegesen alkalmazandó tervet még egyszer felülvizsgálatra bocsátja; ez a jövőbeli fejlesztések egyik iránya.
+
+            \subsubsection{Konfigurációs ellenőrzés – Checkov}
             A Checkov egy nyílt forráskódú statikus elemző eszköz, amely Terraform konfigurációkat vizsgál ismert biztonsági problémák és rossz praktikák szempontjából\cite{checkov}.
             Futtatása pull request esetén kötelező lépés: amennyiben magas súlyosságú problémát talál, például nyilvánosan elérhető storage bucket vagy nem megfelelő IAM konfiguráció,
             a workflow megakadályozza a merge-t. Ez biztosítja, hogy a fejlesztés során se kerülhessen sérülékeny infrastruktúra a produkcióba.

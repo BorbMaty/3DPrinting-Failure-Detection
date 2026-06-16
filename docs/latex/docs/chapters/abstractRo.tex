@@ -1,3 +1,8 @@
-Extract
-
-\textbf{Cuvinte cheie}: 
+În timpul procesului de imprimare 3D pot apărea diverse defecte care pot cauza pierderi de material, pierderi de timp și chiar deteriorarea echipamentului.
+Scopul acestei lucrări este dezvoltarea unui sistem de monitorizare în timp real, capabil să recunoască defectele de imprimare folosind metode de procesare a imaginilor.
+Soluția propusă se bazează pe un sistem de supraveghere cu mai multe camere, care înregistrează continuu procesul de imprimare, iar cadrele sunt
+prelucrate de o rețea neuronală YOLOv8 care rulează într-un mediu bazat pe cloud. Modelul a fost antrenat pe un set de date adnotat propriu și este capabil
+să recunoască 9 clase de defecte, atingând o precizie de 89.2\% mAP50 și o valoare recall de 83.6\%, iar prelucrarea fiecărui cadru necesită aproximativ 23 ms timp de inferență.
+Sistemul include și un mecanism de notificare, care oferă utilizatorului un feedback imediat în cazul detectării unei anomalii.
+Pe baza rezultatelor experimentale, sistemul este potrivit pentru detectarea defectelor în timp real și poate contribui la creșterea eficienței procesului de
+imprimare, precum și la reducerea pierderilor de material.

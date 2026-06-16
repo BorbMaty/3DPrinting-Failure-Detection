@@ -1,54 +1,107 @@
-\documentclass[12pt, twosides]{report}
+\documentclass{sapientia-thesis}
 
-\include{preamble}
+% ── Extra packages not provided by the class ─────────────────────────────────
+\graphicspath{{figures/}{./}}
+\usepackage{subcaption}     % \subcaptionbox used in the data-gathering chapter
+\usepackage{pdfpages}
 
-\title{
-	{3D nyomtatási folyamat monitorizálás és hibadetektálás mesterséges intelligenciával}\\
-	{\large Sapientia\\
-	Erdélyi Magyar Tudományegyetem, Marosvásárhely}
+% Custom YAML language for listings (bash/Python are built in)
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{blue}\bfseries,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{teal},
+  morestring=[b]',
+  morestring=[b]",
 }
-\author{
-	Borbáth, Mátyás-Levente\\
-	\texttt{borbath.matyas@student.ms.sapientia.ro}
-	\and
-	Szántó, Zoltán\\ 
-	\texttt{zoltan.szanto@ms.sapientia.ro}
-	\and 
-	Fehér Áron\\
-	\texttt{fehera@ms.sapientia.ro}
-	}	
-\date{2026}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ── Bibliography file ────────────────────────────────────────────────────────
+\thesisbibfile{References.bib}
+
+% ── Student-specific metadata ────────────────────────────────────────────────
+\titleRO{Monitorizarea procesului de imprimare 3D și detectarea erorilor cu inteligență artificială}
+\titleHU{3D nyomtatási folyamat monitorizálás és hibadetektálás mesterséges intelligenciával}
+\titleEN{3D Printing Process Monitoring and Failure Detection with Artificial Intelligence}
+\studentname{Borbáth Mátyás-Levente}
+\yearofthesis{2026}
+
+% ── Program / specialization (overrides the class defaults) ──────────────────
+\programro{SPECIALIZAREA CALCULATOARE}
+\programhu{SZÁMÍTÁSTECHNIKA SZAK}
+\programen{COMPUTER SCIENCE}
+
+\supervisorRO{%
+  Ș.l.dr.ing. Fehér Áron\\[0.2cm]
+  Ș.l.dr.ing. Szántó Zoltán%
+}
+
+\supervisorHU{%
+  Dr. Fehér Áron, egyetemi adjunktus\\[0.2cm]
+  Dr. Szántó Zoltán, egyetemi adjunktus%
+}
+
+\supervisorEN{%
+  Lecturer Dr. Fehér Áron\\[0.2cm]
+  Lecturer Dr. Szántó Zoltán%
+}
+
 \begin{document}
 
-%\includepdf[pages={1,2,3}]{pdfs/allamvizsga_borito.pdf}
-
-%\section*{Extras}
-%\input{chapters/abstractRo}
-%\pagebreak
-
-%\includepdf[pages={6}]{pdfs/allamvizsga_borito.pdf}
-
+% ════════════════════════════════════════════════════════════════════════════
+% FRONT MATTER  (no page numbers)
+% ════════════════════════════════════════════════════════════════════════════
 \pagenumbering{gobble}
 
-\input{chapters/mock.tex}
+% ── Romanian cover page ──────────────────────────────────────────────────────
+\maketitlepagero
 
-\section*{Kivonat}
-\input{chapters/abstractHu}
-\pagebreak
+% ── Romanian abstract ────────────────────────────────────────────────────────
+\abstractpagero{Extras}{%
+  \input{chapters/abstractRo}%
+}{\textit{\textbf{Cuvinte cheie:}} imprimare 3D, rețea neuronală convoluțională, YOLOv8x, Raspberry Pi, Google Cloud, Vertex AI, defect, Terraform, Docker, Firebase}
 
-%\section*{Abstract}
-%\input{chapters/abstractEn}
-%\pagebreak
+% ── Hungarian cover page ─────────────────────────────────────────────────────
+\maketitlepagehu
 
+% ── Hungarian abstract / Kivonat ─────────────────────────────────────────────
+\abstractpagehu{Kivonat}{%
+  \input{chapters/abstractHu}%
+}{\textit{\textbf{Kulcsszavak:}} 3D nyomtatás, Konvolúciós neuronháló, YOLOv8x, Raspberry Pi, Google Cloud, Vertex AI, hiba, Terraform, Docker, Firebase}
+
+% ── English cover page ───────────────────────────────────────────────────────
+\maketitlepageen
+
+% ── English abstract ─────────────────────────────────────────────────────────
+\abstractpageen{Abstract}{%
+  \input{chapters/abstractEn}%
+}{\textit{\textbf{Keywords:}} 3D printing, Convolutional neural network, YOLOv8x, Raspberry Pi, Google Cloud, Vertex AI, failure, Terraform, Docker, Firebase}
+
+% ════════════════════════════════════════════════════════════════════════════
+% TABLES OF CONTENTS
+% ════════════════════════════════════════════════════════════════════════════
+\cleardoublepage
+\selectlanguage{hungarian}
+
+\phantomsection
+\addcontentsline{toc}{chapter}{\contentsname}
 \tableofcontents
+\clearpage
 
+\phantomsection
+\addcontentsline{toc}{chapter}{\listfigurename}
 \listoffigures
+\clearpage
 
-\chapter{Bevezető}
+% ════════════════════════════════════════════════════════════════════════════
+% BODY
+% ════════════════════════════════════════════════════════════════════════════
+\input{chaphead}
 \pagenumbering{arabic}
 \setcounter{page}{1}
+
+\chapter{Bevezető}
 \input{chapters/introduction.tex}
 
 \chapter{Irodalomkutatás}
@@ -66,8 +119,6 @@
 \chapter{Adatgyűjtés és előfeldolgozás}
 \input{chapters/data_gathering_and_preparing.tex}
 
-
-
 \chapter{Modell betanítása és validálása}
 \input{chapters/teaching_and_validating.tex}
 
@@ -83,7 +134,9 @@
 %\chapter{Mellékletek}
 %\input{chapters/melleklete.tex}
 
-
+% ════════════════════════════════════════════════════════════════════════════
+% BIBLIOGRAPHY  (bibtex / ieeetr — matches CI compileLatex.yml)
+% ════════════════════════════════════════════════════════════════════════════
 \addcontentsline{toc}{chapter}{Irodalomjegyzék}
 \bibliographystyle{ieeetr}
 \bibliography{References}
@@ -92,6 +145,5 @@
 %\appendix
 %\chapter{Függelék}
 %\input{chapters/appendix}
-
 
 \end{document}

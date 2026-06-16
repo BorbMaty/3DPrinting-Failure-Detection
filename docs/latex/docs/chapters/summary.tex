@@ -51,8 +51,8 @@ egy Vertex AI-n futó \texttt{judge} konténer (YOLOv8 inferenciával), egy Aler
 valamint egy Firestore-alapú valós idejű webes dashboard elemeiből épül fel. Az infrastruktúra
 Terraformmal kezelt, a modellfrissítések CI/CD workflow-n keresztül történnek, emberi beavatkozás nélkül.
 
-A rendszer három kameraállásból, másodpercenként hat képkockát dolgoz fel, és magas prioritású hiba
-észlelésekor e-mail értesítést küld a kezelőnek, 60 másodperces kameránkénti cooldown-nal a riasztásözön
+A rendszer három kameraállásból, kameránként tíz másodpercenként egy képkockát dolgoz fel, és magas prioritású hiba
+észlelésekor e-mail értesítést küld a kezelőnek, egyetlen, az egész rendszerre közös 300 másodperces cooldown-nal a riasztásözön
 elkerülése érdekében.
 
 % -------------------------------------------------------------------
@@ -64,10 +64,6 @@ A jelenlegi megvalósítás több ponton is tovább fejleszthető:
     \item \textbf{Konfidenciaküszöb finomhangolása.} A jelenlegi 35\%-os küszöb empirikusan lett
     meghatározva. Éles nyomtatási körülmények között szisztematikus mérésekkel, precision-recall
     kompromisszum elemzéssel, pontosabb, üzemspecifikus érték határozható meg.
-
-    \item \textbf{Állandó Cloudflare alagút.} Az ideiglenes \textit{quick tunnel} minden Pi-újraindításkor
-    új URL-t kap, ami megszakítja a dashboard stream-kapcsolatát. Éles üzemeltetéshez \textit{named tunnel}
-    konfigurációra van szükség.
 
     \item \textbf{Vertex AI scale-to-zero.} A végpont jelenlegi minimálpéldánya napi $\approx$37 USD
     üzemelési költséggel jár. Alacsony intenzitású monitorozási forgatókönyvekben a \textit{scale-to-zero}

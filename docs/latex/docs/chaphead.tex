@@ -1,0 +1,15 @@
+% Override chapter heading to match Word: "1. BEVEZETŐ" single line, bold, centred
+% Uses \gdef with catcode trick so it survives babel's AtBeginDocument patching
+\catcode`\@=11
+\gdef\@makechapterhead#1{%
+  \vspace*{0pt}%
+  {\parindent\z@ \centering \normalfont\bfseries\Large
+   \ifnum\c@secnumdepth>\m@ne \thechapter.\ \fi
+   \MakeUppercase{#1}%
+   \par\nobreak\vskip 1.8em}}%
+\gdef\@makeschapterhead#1{%
+  \vspace*{0pt}%
+  {\parindent\z@ \centering \normalfont\bfseries\Large
+   \MakeUppercase{#1}%
+   \par\nobreak\vskip 1.8em}}%
+\catcode`\@=12
